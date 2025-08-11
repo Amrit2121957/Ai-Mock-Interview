@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Home - TalentMate{% endblock %}
+
+{% block additional_css %}
+<style>
+    .hero-section {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quote-container {
+        font-size: 2.5rem;
+        font-weight: bold;
+        line-height: 1.2;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 2rem;
+    }
+
+    .start-btn {
+        background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-radius: 50px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        transition: all 0.4s ease;
+        color: white !important;
+        text-decoration: none !important;
+        display: inline-block;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .start-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.6s ease;
+    }
+
+    .start-btn:hover {
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 15px 40px rgba(255, 107, 107, 0.4);
+        background: linear-gradient(45deg, #ff8e53, #ff6b6b);
+        animation: buttonPulse 0.6s ease;
+    }
+
+    .start-btn:hover::before {
+        left: 100%;
+    }
+
+    .start-btn:hover i {
+        animation: rocketLaunch 0.6s ease;
+    }
+
+    .start-btn:active {
+        transform: translateY(-2px) scale(1.02);
+        transition: all 0.1s ease;
+    }
+
+    @keyframes buttonPulse {
+        0% { transform: translateY(-5px) scale(1.05); }
+        50% { transform: translateY(-7px) scale(1.08); }
+        100% { transform: translateY(-5px) scale(1.05); }
+    }
+
+    @keyframes rocketLaunch {
+        0% { transform: translateX(0) rotate(0deg); }
+        25% { transform: translateX(3px) rotate(-10deg); }
+        50% { transform: translateX(-2px) rotate(5deg); }
+        75% { transform: translateX(4px) rotate(-5deg); }
+        100% { transform: translateX(0) rotate(0deg); }
+    }
+
+    .postcard {
+        width: 400px;
+        height: 280px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.4s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .postcard:hover {
+        transform: scale(1.05) rotate(2deg);
+        background: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+
+    .postcard-text {
+        font-size: 1.8rem;
+        font-weight: bold;
+        text-align: center;
+        transition: all 0.4s ease;
+        opacity: 0.8;
+    }
+
+    .postcard:hover .postcard-text {
+        transform: scale(1.1);
+        opacity: 1;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .floating-elements {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .floating-icon {
+        position: absolute;
+        font-size: 2rem;
+        opacity: 0.1;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(180deg); }
+    }
+
+    .features-section {
+        padding: 80px 0;
+        background: #f8f9fa;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-15px) scale(1.05);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        animation: popOut 0.3s ease;
+    }
+
+    @keyframes popOut {
+        0% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-8px) scale(1.08); }
+        100% { transform: translateY(-15px) scale(1.05); }
+    }
+
+    .feature-icon {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 20px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .quote-container {
+            font-size: 1.8rem;
+        }
+        
+        .postcard {
+            width: 320px;
+            height: 320px; /* Keep it circular on mobile */
+        }
+        
+        .postcard-text {
+            font-size: 1.4rem;
+        }
+        
+        .feature-card {
+            margin-bottom: 2rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .quote-container {
+            font-size: 1.5rem;
+        }
+        
+        .postcard {
+            width: 280px;
+            height: 280px; /* Keep it circular on small mobile */
+        }
+        
+        .postcard-text {
+            font-size: 1.2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="floating-elements">
+        <i class="fas fa-brain floating-icon" style="top: 10%; left: 10%; animation-delay: 0s;"></i>
+        <i class="fas fa-lightbulb floating-icon" style="top: 20%; right: 20%; animation-delay: 1s;"></i>
+        <i class="fas fa-graduation-cap floating-icon" style="bottom: 30%; left: 15%; animation-delay: 2s;"></i>
+        <i class="fas fa-chart-line floating-icon" style="bottom: 10%; right: 10%; animation-delay: 3s;"></i>
+    </div>
+    
+    <div class="container">
+        <div class="row align-items-center">
+            <!-- Left Side - Quote and Button -->
+            <div class="col-lg-7">
+                <div class="quote-container">
+                    "A GOAL WITHOUT A PLAN IS JUST A WISH."
+                </div>
+                <div class="d-flex justify-content-start">
+                    <a href="{{ url_for('interview') }}" class="btn start-btn">
+                        <i class="fas fa-rocket me-2"></i>Start Interview
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Right Side - Animated Postcard -->
+            <div class="col-lg-5 d-flex justify-content-center">
+                <div class="postcard">
+                    <div class="postcard-text">
+                        Welcome to<br>AI Interview
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="display-4 fw-bold mb-3">Why Choose TalentMate?</h2>
+                <p class="lead">Experience the future of interview preparation with our AI-powered platform</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h4>AI-Powered Questions</h4>
+                    <p>Get personalized interview questions based on your resume and target job role using advanced AI algorithms.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h4>Detailed Analytics</h4>
+                    <p>Receive comprehensive feedback and scoring with detailed insights to improve your interview performance.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h4>Downloadable Reports</h4>
+                    <p>Get professional PDF reports of your interview performance that you can save and share with mentors.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section class="py-5 bg-primary text-white text-center">
+    <div class="container">
+        <h3 class="mb-3">Ready to Ace Your Next Interview?</h3>
+        <p class="lead mb-4">Join thousands of successful candidates who improved their interview skills with TalentMate</p>
+        {% if not session.user_id %}
+        <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+            <i class="fas fa-user-plus me-2"></i>Get Started Today
+        </a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %} 

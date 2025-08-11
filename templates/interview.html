@@ -1,0 +1,565 @@
+{% extends "base.html" %}
+
+{% block title %}Interview - TalentMate{% endblock %}
+
+{% block additional_css %}
+<style>
+    .interview-container {
+        padding: 40px 0;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 80vh;
+    }
+
+    .interview-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .interview-header h1 {
+        color: #333;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .interview-header p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+
+    .step-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        transition: all 0.3s ease;
+        border-left: 5px solid #667eea;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .step-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .file-upload-area {
+        border: 3px dashed #ddd;
+        border-radius: 15px;
+        padding: 40px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .file-upload-area:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .file-upload-area.dragover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 15px;
+    }
+
+    .start-interview-btn {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        border: none;
+        border-radius: 10px;
+        padding: 15px 30px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .start-interview-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+
+    .start-interview-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .progress-steps {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 40px;
+    }
+
+    .progress-step {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 10px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .progress-step.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .progress-step.completed {
+        background: #28a745;
+        color: white;
+    }
+
+    .progress-line {
+        width: 50px;
+        height: 2px;
+        background: #e9ecef;
+        margin-top: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .progress-line.active {
+        background: #667eea;
+    }
+
+    .interview-questions {
+        display: none;
+    }
+
+    .question-card {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .question-number {
+        background: #667eea;
+        color: white;
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-weight: bold;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .answer-textarea {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    .submit-answer-btn {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border: none;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .submit-answer-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .feedback-card {
+        background: #f8f9fa;
+        border-left: 5px solid #28a745;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+
+    .score-badge {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        color: white;
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-weight: bold;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="interview-container">
+    <div class="container">
+        <div class="interview-header">
+            <h1><i class="fas fa-clipboard-question me-2"></i>AI Mock Interview</h1>
+            <p>Upload your resume and let our AI create personalized interview questions</p>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="progress-steps">
+            <div class="progress-step active" id="step1">1</div>
+            <div class="progress-line" id="line1"></div>
+            <div class="progress-step" id="step2">2</div>
+            <div class="progress-line" id="line2"></div>
+            <div class="progress-step" id="step3">3</div>
+        </div>
+
+        <!-- Step 1: Setup -->
+        <div id="setup-section">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <h4><i class="fas fa-briefcase me-2"></i>Select Job Role</h4>
+                        <p class="text-muted mb-3">Choose the position you're interviewing for</p>
+                        
+                        <div class="form-group">
+                            <label for="jobRole" class="form-label">Target Job Role</label>
+                            <select class="form-select" id="jobRole" required>
+                                <option value="">Select a job role...</option>
+                                <option value="Full Stack Developer (Java)">Full Stack Developer (Java)</option>
+                                <option value="Full Stack Developer (Python)">Full Stack Developer (Python)</option>
+                                <option value="Full Stack Developer (.NET)">Full Stack Developer (.NET)</option>
+                                <option value="Salesforce Admin">Salesforce Admin</option>
+                                <option value="Salesforce Developer">Salesforce Developer</option>
+                                <option value="Program Analyst">Program Analyst</option>
+                                <option value="Business Analyst">Business Analyst</option>
+                                <option value="Software Engineer">Software Engineer</option>
+                                <option value="DevOps Engineer">DevOps Engineer</option>
+                                <option value="Data Scientist">Data Scientist</option>
+                                <option value="Product Manager">Product Manager</option>
+                                <option value="UI/UX Designer">UI/UX Designer</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="experience" class="form-label">Experience Level</label>
+                            <select class="form-select" id="experience">
+                                <option value="entry">Entry Level (0-2 years)</option>
+                                <option value="mid" selected>Mid Level (2-5 years)</option>
+                                <option value="senior">Senior Level (5+ years)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <h4><i class="fas fa-file-upload me-2"></i>Upload Resume</h4>
+                        <p class="text-muted mb-3">Upload your resume in PDF, DOCX, or TXT format</p>
+                        
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <h5>Drag & Drop your resume here</h5>
+                            <p class="text-muted">or click to browse files</p>
+                            <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display: none;">
+                        </div>
+                        
+                        <div id="fileInfo" class="mt-3" style="display: none;">
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span id="fileName"></span> uploaded successfully
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button class="btn btn-success start-interview-btn" id="startInterviewBtn" disabled>
+                        <i class="fas fa-rocket me-2"></i>Generate Interview Questions
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Interview Questions (Hidden initially) -->
+        <div id="interview-section" class="interview-questions">
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Answer each question thoughtfully. Our AI will provide detailed feedback for each response.
+                    </div>
+                </div>
+            </div>
+            
+            <div id="questionsContainer">
+                <!-- Questions will be dynamically loaded here -->
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-primary" id="finishInterviewBtn" style="display: none;">
+                    <i class="fas fa-flag-checkered me-2"></i>Finish Interview & View Results
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" style="display: none;">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Generating personalized interview questions...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+let currentSessionId = null;
+let questions = [];
+let currentQuestionIndex = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const resumeFileInput = document.getElementById('resumeFile');
+    const jobRoleSelect = document.getElementById('jobRole');
+    const startInterviewBtn = document.getElementById('startInterviewBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+
+    // File upload handling
+    fileUploadArea.addEventListener('click', () => resumeFileInput.click());
+    fileUploadArea.addEventListener('dragover', handleDragOver);
+    fileUploadArea.addEventListener('drop', handleFileDrop);
+    resumeFileInput.addEventListener('change', handleFileSelect);
+
+    // Form validation
+    function checkFormValidity() {
+        const hasFile = resumeFileInput.files.length > 0;
+        const hasJobRole = jobRoleSelect.value !== '';
+        startInterviewBtn.disabled = !(hasFile && hasJobRole);
+    }
+
+    jobRoleSelect.addEventListener('change', checkFormValidity);
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    }
+
+    function handleFileDrop(e) {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            resumeFileInput.files = files;
+            handleFileSelect();
+        }
+    }
+
+    function handleFileSelect() {
+        const file = resumeFileInput.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'block';
+            checkFormValidity();
+        }
+    }
+
+    // Start interview
+    startInterviewBtn.addEventListener('click', async function() {
+        const formData = new FormData();
+        formData.append('resume', resumeFileInput.files[0]);
+        formData.append('job_role', jobRoleSelect.value);
+
+        document.getElementById('loadingOverlay').style.display = 'block';
+        
+        try {
+            const response = await fetch('/upload-resume', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                currentSessionId = data.session_id;
+                questions = data.questions;
+                showInterviewQuestions();
+                updateProgressSteps(2);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('An error occurred while processing your resume. Please try again.');
+        } finally {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    });
+
+    function showInterviewQuestions() {
+        document.getElementById('setup-section').style.display = 'none';
+        document.getElementById('interview-section').style.display = 'block';
+        
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = '';
+
+        questions.forEach((question, index) => {
+            const questionCard = createQuestionCard(question, index);
+            container.appendChild(questionCard);
+        });
+    }
+
+    function createQuestionCard(question, index) {
+        const card = document.createElement('div');
+        card.className = 'question-card';
+        card.innerHTML = `
+            <div class="question-number">Question ${index + 1}</div>
+            <div class="mb-2"><strong>Category:</strong> ${question.category}</div>
+            <h5 class="mb-3">${question.question}</h5>
+            <div class="form-group">
+                <label for="answer_${question.id}" class="form-label">Your Answer:</label>
+                <textarea class="form-control answer-textarea" id="answer_${question.id}" 
+                         placeholder="Type your detailed answer here..." required></textarea>
+            </div>
+            <button class="btn btn-primary submit-answer-btn" onclick="submitAnswer('${question.id}', ${index})">
+                <i class="fas fa-paper-plane me-2"></i>Submit Answer
+            </button>
+            <div id="feedback_${question.id}" class="feedback-card" style="display: none;">
+                <!-- Feedback will be shown here -->
+            </div>
+        `;
+        return card;
+    }
+
+    window.submitAnswer = async function(questionId, questionIndex) {
+        const answerTextarea = document.getElementById(`answer_${questionId}`);
+        const answer = answerTextarea.value.trim();
+        
+        if (!answer) {
+            alert('Please provide an answer before submitting.');
+            return;
+        }
+
+        const submitBtn = event.target;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing...';
+
+        try {
+            const response = await fetch('/submit-answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: currentSessionId,
+                    question_id: questionId,
+                    answer: answer
+                })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                showFeedback(questionId, data);
+                answerTextarea.disabled = true;
+                submitBtn.style.display = 'none';
+                
+                // Check if all questions are answered
+                currentQuestionIndex++;
+                if (currentQuestionIndex >= questions.length) {
+                    document.getElementById('finishInterviewBtn').style.display = 'block';
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            alert('An error occurred while submitting your answer. Please try again.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Answer';
+        }
+    };
+
+    function showFeedback(questionId, data) {
+        const feedbackDiv = document.getElementById(`feedback_${questionId}`);
+        feedbackDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6><i class="fas fa-chart-line me-2"></i>AI Feedback</h6>
+                <span class="score-badge">${data.score}/100</span>
+            </div>
+            <p class="mb-2">${data.feedback}</p>
+            ${data.areas_to_improve.length > 0 ? `
+                <div class="mt-2">
+                    <strong>Areas to Improve:</strong>
+                    <ul class="mb-0 mt-1">
+                        ${data.areas_to_improve.map(area => `<li>${area}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+        `;
+        feedbackDiv.style.display = 'block';
+    }
+
+    function updateProgressSteps(activeStep) {
+        for (let i = 1; i <= 3; i++) {
+            const step = document.getElementById(`step${i}`);
+            const line = document.getElementById(`line${i}`);
+            
+            if (i < activeStep) {
+                step.classList.remove('active');
+                step.classList.add('completed');
+                if (line) line.classList.add('active');
+            } else if (i === activeStep) {
+                step.classList.add('active');
+                step.classList.remove('completed');
+            } else {
+                step.classList.remove('active', 'completed');
+                if (line) line.classList.remove('active');
+            }
+        }
+    }
+
+    document.getElementById('finishInterviewBtn').addEventListener('click', function() {
+        updateProgressSteps(3);
+        window.location.href = `/review`;
+    });
+});
+</script>
+{% endblock %} 

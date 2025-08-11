@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - TalentMate{% endblock %}
+
+{% block additional_css %}
+<style>
+    .edit-profile-container {
+        padding: 2rem 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+
+    .edit-profile-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .profile-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0 auto 1rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .btn-save {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border: none;
+        padding: 0.75rem 2rem;
+        color: white;
+        border-radius: 25px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(45deg, #764ba2, #667eea);
+        color: white;
+    }
+
+    .section-title {
+        color: #667eea;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .form-floating label {
+        color: #666;
+    }
+
+    .form-floating .form-control:focus ~ label,
+    .form-floating .form-control:not(:placeholder-shown) ~ label {
+        color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="edit-profile-card">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            {{ user[2][0].upper() if user[2] else 'U' }}
+                        </div>
+                        <h2>Edit Profile</h2>
+                        <p class="text-muted">Update your personal and professional information</p>
+                    </div>
+
+                    <form method="POST">
+                        <!-- Basic Information -->
+                        <h4 class="section-title">
+                            <i class="fas fa-user me-2"></i>Basic Information
+                        </h4>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="full_name" value="{{ user[2] or '' }}" readonly>
+                                    <label for="full_name">Full Name</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="email" class="form-control" id="email" value="{{ user[1] or '' }}" readonly>
+                                    <label for="email">Email Address</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="Phone Number" value="{{ user[4] or '' }}">
+                                    <label for="phone">Phone Number</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="company" name="company" placeholder="Company" value="{{ user[5] or '' }}">
+                                    <label for="company">Company</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Professional Information -->
+                        <h4 class="section-title">
+                            <i class="fas fa-briefcase me-2"></i>Professional Information
+                        </h4>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="position" name="position" placeholder="Position" value="{{ user[6] or '' }}">
+                                    <label for="position">Position/Job Title</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-control" id="experience_years" name="experience_years">
+                                        <option value="">Select Experience</option>
+                                        <option value="0" {% if user[7] == 0 %}selected{% endif %}>Fresh Graduate</option>
+                                        <option value="1" {% if user[7] == 1 %}selected{% endif %}>1 Year</option>
+                                        <option value="2" {% if user[7] == 2 %}selected{% endif %}>2 Years</option>
+                                        <option value="3" {% if user[7] == 3 %}selected{% endif %}>3 Years</option>
+                                        <option value="4" {% if user[7] == 4 %}selected{% endif %}>4 Years</option>
+                                        <option value="5" {% if user[7] == 5 %}selected{% endif %}>5 Years</option>
+                                        <option value="6" {% if user[7] == 6 %}selected{% endif %}>6+ Years</option>
+                                        <option value="10" {% if user[7] == 10 %}selected{% endif %}>10+ Years</option>
+                                    </select>
+                                    <label for="experience_years">Years of Experience</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                <textarea class="form-control" id="skills" name="skills" placeholder="Skills" style="height: 100px">{{ user[8] or '' }}</textarea>
+                                <label for="skills">Skills (comma-separated)</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Example: JavaScript, Python, React, Node.js, SQL, etc.
+                            </small>
+                        </div>
+
+                        <!-- About Section -->
+                        <h4 class="section-title">
+                            <i class="fas fa-info-circle me-2"></i>About You
+                        </h4>
+
+                        <div class="mb-4">
+                            <div class="form-floating">
+                                <textarea class="form-control" id="bio" name="bio" placeholder="Bio" style="height: 120px">{{ user[9] or '' }}</textarea>
+                                <label for="bio">Bio/Summary</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Tell us about yourself, your career goals, and what makes you unique.
+                            </small>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Back to Profile
+                            </a>
+                            <button type="submit" class="btn btn-save">
+                                <i class="fas fa-save me-1"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-resize textareas
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    });
+    
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const phone = document.getElementById('phone').value;
+        if (phone && !/^[\+]?[\d\s\-\(\)]+$/.test(phone)) {
+            e.preventDefault();
+            alert('Please enter a valid phone number');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %} 

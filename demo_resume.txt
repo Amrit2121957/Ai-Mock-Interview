@@ -1,0 +1,87 @@
+John Doe
+Full Stack Developer
+
+Contact Information:
+Email: john.doe@email.com
+Phone: (555) 123-4567
+LinkedIn: linkedin.com/in/johndoe
+GitHub: github.com/johndoe
+
+Professional Summary:
+Experienced Full Stack Developer with 5+ years of experience in building scalable web applications. 
+Proficient in modern JavaScript frameworks, Python backend development, and cloud technologies. 
+Strong problem-solving skills and experience with Agile development methodologies.
+
+Technical Skills:
+- Programming Languages: Python, JavaScript, TypeScript, Java
+- Frontend: React, Angular, Vue.js, HTML5, CSS3
+- Backend: Node.js, Django, Flask, Express.js
+- Databases: PostgreSQL, MongoDB, MySQL, Redis
+- Cloud Platforms: AWS, Google Cloud Platform, Azure
+- DevOps: Docker, Kubernetes, CI/CD, Git
+- Tools: Git, Docker, Jenkins, JIRA, VS Code
+
+Professional Experience:
+
+Senior Full Stack Developer | TechCorp Inc. | 2021 - Present
+- Led a team of 4 developers in building a customer management system using React and Django
+- Implemented microservices architecture resulting in 40% improved system performance
+- Designed and developed RESTful APIs serving 100k+ daily requests
+- Mentored junior developers and conducted code reviews
+- Collaborated with product managers to define technical requirements
+
+Full Stack Developer | StartupXYZ | 2019 - 2021
+- Developed responsive web applications using React and Node.js
+- Built automated testing suites increasing code coverage to 90%
+- Optimized database queries reducing response time by 60%
+- Implemented authentication and authorization systems
+- Participated in Agile development cycles and sprint planning
+
+Junior Developer | WebSolutions Ltd. | 2018 - 2019
+- Developed frontend components using HTML, CSS, and JavaScript
+- Assisted in backend development using Python and Flask
+- Fixed bugs and implemented feature requests
+- Learned best practices for software development and version control
+
+Education:
+Bachelor of Science in Computer Science
+University of Technology | 2014 - 2018
+GPA: 3.7/4.0
+
+Relevant Coursework:
+- Data Structures and Algorithms
+- Software Engineering
+- Database Systems
+- Web Development
+- Machine Learning
+
+Projects:
+1. E-commerce Platform (2022)
+   - Built a full-stack e-commerce application using React, Node.js, and MongoDB
+   - Implemented payment processing with Stripe API
+   - Deployed on AWS with auto-scaling capabilities
+
+2. Task Management App (2021)
+   - Developed a collaborative task management tool using Vue.js and Django
+   - Implemented real-time updates using WebSockets
+   - Integrated with third-party APIs for calendar synchronization
+
+3. Weather Dashboard (2020)
+   - Created a responsive weather dashboard using React and external weather APIs
+   - Implemented location-based weather forecasting
+   - Added data visualization using Chart.js
+
+Certifications:
+- AWS Certified Developer Associate (2022)
+- Google Cloud Professional Developer (2021)
+- MongoDB Certified Developer (2020)
+
+Languages:
+- English (Native)
+- Spanish (Conversational)
+
+Interests:
+- Open source contribution
+- Machine learning and AI
+- Mobile app development
+- Photography 

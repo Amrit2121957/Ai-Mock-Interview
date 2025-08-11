@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - TalentMate{% endblock %}
+
+{% block additional_css %}
+<style>
+    .profile-container {
+        padding: 2rem 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+
+    .profile-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .profile-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-right: 1.5rem;
+    }
+
+    .profile-info h2 {
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .profile-info .text-muted {
+        font-size: 1.1rem;
+    }
+
+    .section-title {
+        color: #667eea;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .interview-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #667eea;
+        transition: transform 0.2s ease;
+    }
+
+    .interview-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .score-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: bold;
+        color: white;
+    }
+
+    .score-excellent { background: linear-gradient(45deg, #28a745, #20c997); }
+    .score-good { background: linear-gradient(45deg, #17a2b8, #20c997); }
+    .score-average { background: linear-gradient(45deg, #ffc107, #fd7e14); }
+    .score-poor { background: linear-gradient(45deg, #dc3545, #fd7e14); }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-approved { background: #d1ecf1; color: #0c5460; }
+    .status-rejected { background: #f8d7da; color: #721c24; }
+
+    .interview-schedule-form {
+        background: #e3f2fd;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .btn-schedule {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        color: white;
+        border-radius: 25px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .btn-schedule:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(45deg, #764ba2, #667eea);
+        color: white;
+    }
+
+    .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        display: block;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="container">
+        <!-- Profile Header -->
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    {{ user[2][0].upper() if user[2] else 'U' }}
+                </div>
+                <div class="profile-info">
+                    <h2>{{ user[2] or 'User' }}</h2>
+                    <p class="text-muted mb-1">{{ user[1] }}</p>
+                    <p class="text-muted mb-0">
+                        {% if user[5] %}{{ user[5] }}{% endif %}
+                        {% if user[6] %} - {{ user[6] }}{% endif %}
+                    </p>
+                </div>
+                <div class="ms-auto">
+                    <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-edit me-1"></i>Edit Profile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Profile Stats -->
+            <div class="profile-stats">
+                <div class="stat-card">
+                    <span class="stat-number">{{ interview_history|length }}</span>
+                    <span class="stat-label">Total Interviews</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">
+                        {% set scores = interview_history|selectattr(2)|map(attribute=2)|list %}
+                        {% if scores %}{{ (scores|sum / scores|length)|round|int }}{% else %}0{% endif %}
+                    </span>
+                    <span class="stat-label">Average Score</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">
+                        {% set best_score = interview_history|selectattr(2)|map(attribute=2)|max if interview_history|selectattr(2)|list else 0 %}
+                        {{ best_score or 0 }}
+                    </span>
+                    <span class="stat-label">Best Score</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ interview_requests|selectattr(6, 'equalto', 'pending')|list|length }}</span>
+                    <span class="stat-label">Pending Requests</span>
+                </div>
+            </div>
+
+            <!-- Additional Profile Info -->
+            {% if user[4] or user[7] or user[8] or user[9] %}
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Contact Information</h5>
+                    <p><i class="fas fa-envelope me-2"></i>{{ user[1] }}</p>
+                    {% if user[4] %}<p><i class="fas fa-phone me-2"></i>{{ user[4] }}</p>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <h5>Professional Details</h5>
+                    {% if user[7] %}<p><i class="fas fa-calendar me-2"></i>{{ user[7] }} years experience</p>{% endif %}
+                    {% if user[8] %}<p><i class="fas fa-cogs me-2"></i>{{ user[8] }}</p>{% endif %}
+                </div>
+            </div>
+            {% if user[9] %}
+            <div class="mt-3">
+                <h5>About</h5>
+                <p>{{ user[9] }}</p>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Interview History -->
+        <div class="profile-card">
+            <h3 class="section-title">
+                <i class="fas fa-history me-2"></i>Interview History
+            </h3>
+            
+            {% if interview_history %}
+                {% for session in interview_history %}
+                <div class="interview-card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-1">{{ session[1] or 'General Interview' }}</h5>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ session[3].split('T')[0] if session[3] else 'Unknown date' }}
+                            </small>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            {% if session[2] %}
+                                {% set score = session[2] %}
+                                <span class="score-badge 
+                                    {% if score >= 80 %}score-excellent
+                                    {% elif score >= 60 %}score-good
+                                    {% elif score >= 40 %}score-average
+                                    {% else %}score-poor{% endif %}">
+                                    {{ score }}/100
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">No Score</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-end">
+                                                         {% if session[2] and session[2] >= 70 %}
+                                 <button class="btn btn-sm btn-success" onclick="openScheduleForm('{{ session[0] }}', '{{ session[1] }}', '{{ session[2] }}')">
+                                     <i class="fas fa-calendar-plus me-1"></i>Schedule Interview
+                                 </button>
+                            {% else %}
+                                <small class="text-muted">Score too low for interview</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <h5>No interview history yet</h5>
+                    <p class="text-muted">Start your first interview to see your progress here.</p>
+                    <a href="{{ url_for('interview') }}" class="btn btn-primary">
+                        <i class="fas fa-rocket me-1"></i>Take Interview
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Interview Requests -->
+        <div class="profile-card">
+            <h3 class="section-title">
+                <i class="fas fa-calendar-check me-2"></i>Interview Requests
+            </h3>
+            
+            {% if interview_requests %}
+                {% for request in interview_requests %}
+                <div class="interview-card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h6 class="mb-1">Interview Request</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>
+                                Preferred: {{ request[3] }} at {{ request[4] }}
+                            </small>
+                            {% if request[5] %}
+                                <p class="mt-1 mb-0"><strong>Message:</strong> {{ request[5] }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <span class="status-badge status-{{ request[6] }}">
+                                {{ request[6] }}
+                            </span>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            {% if request[6] == 'approved' and request[9] %}
+                                <small class="text-success">
+                                    <i class="fas fa-check me-1"></i>
+                                    Scheduled: {{ request[9] }}
+                                </small>
+                            {% elif request[6] == 'rejected' %}
+                                <small class="text-danger">
+                                    <i class="fas fa-times me-1"></i>
+                                    Request declined
+                                </small>
+                            {% else %}
+                                <small class="text-warning">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Awaiting response
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if request[8] %}
+                        <div class="mt-2 p-2 bg-light rounded">
+                            <strong>Recruiter Response:</strong> {{ request[8] }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h5>No interview requests yet</h5>
+                    <p class="text-muted">Complete interviews with good scores to request real interviews.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule Interview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('schedule_interview') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" id="session_id" name="session_id">
+                    <div class="mb-3">
+                        <label class="form-label">Interview Session</label>
+                        <input type="text" id="session_display" class="form-control" readonly>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Preferred Date</label>
+                                <input type="date" name="preferred_date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Preferred Time</label>
+                                <input type="time" name="preferred_time" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message (Optional)</label>
+                        <textarea name="message" class="form-control" rows="3" placeholder="Any additional information for the recruiter..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-schedule">
+                        <i class="fas fa-paper-plane me-1"></i>Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+function openScheduleForm(sessionId, jobRole, score) {
+    document.getElementById('session_id').value = sessionId;
+    document.getElementById('session_display').value = jobRole + ' (Score: ' + score + '/100)';
+    
+    // Set minimum date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const minDate = tomorrow.toISOString().split('T')[0];
+    document.querySelector('input[name="preferred_date"]').min = minDate;
+    
+    new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+}
+</script>
+{% endblock %} 
