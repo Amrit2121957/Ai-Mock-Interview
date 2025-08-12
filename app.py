@@ -802,7 +802,433 @@ def manage_interview_request(request_id):
     
     conn.commit()
     conn.close()
+    
+    # Send email notification
+    try:
+        send_interview_email(request_id, action, scheduled_date if action == 'approve' else None)
+    except Exception as e:
+        print(f"Email notification failed: {e}")
+    
     return redirect(url_for('recruiter_dashboard'))
+
+
+@app.route('/api/candidate-interview-requests/<candidate_identifier>')
+@login_required
+def get_candidate_interview_requests(candidate_identifier):
+    """Get interview requests for a specific candidate"""
+    try:
+        if session.get('user_role') != 'recruiter':
+            return jsonify({'error': 'Access denied'}), 403
+        
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        # Try to find user by ID first, then by email
+        if candidate_identifier.isdigit():
+            user_condition = "u.id = ?"
+            user_value = int(candidate_identifier)
+        else:
+            user_condition = "u.email = ?"
+            user_value = candidate_identifier
+        
+        cursor.execute(f'''
+            SELECT ir.id, ir.user_id, ir.preferred_date, ir.preferred_time, ir.message, ir.status,
+                   ir.scheduled_date, ir.recruiter_response, u.full_name, u.email
+            FROM interview_requests ir
+            JOIN users u ON ir.user_id = u.id
+            WHERE {user_condition}
+            ORDER BY ir.created_at DESC
+        ''', (user_value,))
+        
+        requests = cursor.fetchall()
+        conn.close()
+        
+        interview_requests = []
+        for request in requests:
+            interview_requests.append({
+                'id': request[0],
+                'user_id': request[1],
+                'preferred_date': request[2],
+                'preferred_time': request[3],
+                'message': request[4],
+                'status': request[5],
+                'scheduled_date': request[6],
+                'recruiter_response': request[7],
+                'candidate_name': request[8],
+                'candidate_email': request[9]
+            })
+        
+        return jsonify({'interview_requests': interview_requests})
+        
+    except Exception as e:
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+@app.route('/api/notifications')
+@login_required
+def get_notifications():
+    """Get notifications for the current user"""
+    try:
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, type, title, message, data, is_read, created_at
+            FROM notifications 
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+        ''', (session['user_id'],))
+        
+        notifications = []
+        for row in cursor.fetchall():
+            notifications.append({
+                'id': row[0],
+                'type': row[1],
+                'title': row[2],
+                'message': row[3],
+                'data': json.loads(row[4]) if row[4] else {},
+                'is_read': bool(row[5]),
+                'created_at': row[6]
+            })
+        
+        conn.close()
+        return jsonify({'notifications': notifications})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/count')
+@login_required
+def get_notification_count():
+    """Get unread notification count"""
+    try:
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT COUNT(*) FROM notifications 
+            WHERE user_id = ? AND is_read = FALSE
+        ''', (session['user_id'],))
+        
+        count = cursor.fetchone()[0]
+        conn.close()
+        
+        return jsonify({'count': count})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    """Mark a notification as read"""
+    try:
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE notifications 
+            SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+        ''', (notification_id, session['user_id']))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/mark-all-read', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    """Mark all notifications as read for the current user"""
+    try:
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE notifications 
+            SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND is_read = FALSE
+        ''', (session['user_id'],))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def create_notification(user_id, notification_type, title, message, data=None):
+    """Helper function to create a notification"""
+    import time
+    max_retries = 3
+    retry_delay = 0.1
+    
+    for attempt in range(max_retries):
+        try:
+            conn = sqlite3.connect('talentmate.db', timeout=10.0)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO notifications (user_id, type, title, message, data)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (user_id, notification_type, title, message, json.dumps(data) if data else None))
+            
+            conn.commit()
+            conn.close()
+            return True
+            
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e) and attempt < max_retries - 1:
+                print(f"Database locked on attempt {attempt + 1}, retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+                continue
+            else:
+                print(f"Error creating notification: {e}")
+                return False
+        except Exception as e:
+            print(f"Error creating notification: {e}")
+            return False
+    
+    return False
+
+@app.route('/api/propose-interview', methods=['POST'])
+@login_required
+def propose_interview():
+    """Recruiter proposes an interview date to a candidate"""
+    try:
+        if session.get('user_role') != 'recruiter':
+            return jsonify({'error': 'Access denied'}), 403
+        
+        data = request.get_json()
+        candidate_id = data.get('candidate_id')
+        candidate_email = data.get('candidate_email')
+        proposed_date = data.get('proposed_date')
+        proposed_time = data.get('proposed_time')
+        message = data.get('message', '')
+        
+        if not all([candidate_id, proposed_date, proposed_time]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        # Create an interview request record
+        cursor.execute('''
+            INSERT INTO interview_requests 
+            (user_id, recruiter_id, recruiter_proposed_date, recruiter_proposed_time, 
+             recruiter_response, status, workflow_status, created_at)
+            VALUES (?, ?, ?, ?, ?, 'recruiter_proposed', 'user_response_pending', CURRENT_TIMESTAMP)
+        ''', (candidate_id, session['user_id'], proposed_date, proposed_time, message))
+        
+        request_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        # Create notification for the candidate
+        notification_title = "Interview Invitation"
+        notification_message = f"You have been invited for an interview on {proposed_date} at {proposed_time}. Please respond to confirm or propose an alternative."
+        
+        create_notification(
+            candidate_id,
+            'interview_invitation',
+            notification_title,
+            notification_message,
+            {
+                'request_id': request_id,
+                'proposed_date': proposed_date,
+                'proposed_time': proposed_time,
+                'recruiter_message': message
+            }
+        )
+        
+        # TODO: Send email notification to candidate
+        
+        return jsonify({'success': True, 'request_id': request_id})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/respond-interview', methods=['POST'])
+@login_required
+def respond_interview():
+    """User responds to an interview invitation"""
+    try:
+        data = request.get_json()
+        request_id = data.get('request_id')
+        response = data.get('response')  # 'accept', 'decline', 'alternative'
+        
+        if not all([request_id, response]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        # Get the interview request details
+        cursor.execute('''
+            SELECT user_id, recruiter_id, recruiter_proposed_date, recruiter_proposed_time, recruiter_response
+            FROM interview_requests WHERE id = ?
+        ''', (request_id,))
+        
+        request_details = cursor.fetchone()
+        if not request_details:
+            return jsonify({'error': 'Interview request not found'}), 404
+        
+        user_id, recruiter_id, proposed_date, proposed_time, recruiter_message = request_details
+        
+        # Verify the user owns this request
+        if user_id != session['user_id']:
+            return jsonify({'error': 'Access denied'}), 403
+        
+        if response == 'accept':
+            # User accepts the proposed time
+            cursor.execute('''
+                UPDATE interview_requests 
+                SET user_response = 'accepted', final_date = ?, final_time = ?, 
+                    workflow_status = 'confirmed', status = 'approved'
+                WHERE id = ?
+            ''', (proposed_date, proposed_time, request_id))
+            
+            conn.commit()
+            conn.close()
+            
+            # Notify recruiter (after closing the connection)
+            create_notification(
+                recruiter_id,
+                'interview_accepted',
+                'Interview Accepted',
+                f'Your interview proposal for {proposed_date} at {proposed_time} has been accepted.',
+                {'request_id': request_id, 'final_date': proposed_date, 'final_time': proposed_time}
+            )
+            
+            return jsonify({'success': True})
+            
+        elif response == 'decline':
+            # User declines the invitation
+            cursor.execute('''
+                UPDATE interview_requests 
+                SET user_response = 'declined', workflow_status = 'declined', status = 'rejected'
+                WHERE id = ?
+            ''', (request_id,))
+            
+            conn.commit()
+            conn.close()
+            
+            # Notify recruiter (after closing the connection)
+            create_notification(
+                recruiter_id,
+                'interview_declined',
+                'Interview Declined',
+                f'Your interview proposal for {proposed_date} at {proposed_time} has been declined.',
+                {'request_id': request_id}
+            )
+            
+            return jsonify({'success': True})
+            
+        elif response == 'alternative':
+            # User proposes alternative time
+            alternative_date = data.get('alternative_date')
+            alternative_time = data.get('alternative_time')
+            message = data.get('message', '')
+            
+            if not all([alternative_date, alternative_time]):
+                return jsonify({'error': 'Alternative date and time required'}), 400
+            
+            cursor.execute('''
+                UPDATE interview_requests 
+                SET user_response = 'alternative_proposed', user_proposed_date = ?, user_proposed_time = ?,
+                    message = ?, workflow_status = 'awaiting_recruiter_response'
+                WHERE id = ?
+            ''', (alternative_date, alternative_time, message, request_id))
+            
+            conn.commit()
+            conn.close()
+            
+            # Notify recruiter (after closing the connection)
+            create_notification(
+                recruiter_id,
+                'interview_alternative',
+                'Alternative Date Proposed',
+                f'The candidate has proposed an alternative interview time: {alternative_date} at {alternative_time}.',
+                {
+                    'request_id': request_id, 
+                    'alternative_date': alternative_date, 
+                    'alternative_time': alternative_time,
+                    'user_message': message
+                }
+            )
+            
+            return jsonify({'success': True})
+        
+        return jsonify({'error': 'Invalid response type'}), 400
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def send_interview_email(request_id, action, scheduled_date=None):
+    """Send email notification for interview acceptance/rejection"""
+    conn = sqlite3.connect('talentmate.db')
+    cursor = conn.cursor()
+    
+    # Get request and user details
+    cursor.execute('''
+        SELECT ir.preferred_date, ir.preferred_time, ir.scheduled_date, ir.recruiter_response,
+               u.name, u.email, r.name as recruiter_name, r.email as recruiter_email
+        FROM interview_requests ir
+        JOIN users u ON ir.user_id = u.id
+        LEFT JOIN users r ON ir.recruiter_id = r.id
+        WHERE ir.id = ?
+    ''', (request_id,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if not result:
+        return
+    
+    preferred_date, preferred_time, scheduled_date_db, recruiter_response, candidate_name, candidate_email, recruiter_name, recruiter_email = result
+    
+    # Prepare email content
+    if action == 'approve':
+        subject = f"Interview Schedule Confirmed - {scheduled_date or preferred_date}"
+        status_text = "ACCEPTED"
+        date_info = f"Scheduled for: {scheduled_date or preferred_date}"
+    else:
+        subject = f"Interview Schedule Update - {preferred_date}"
+        status_text = "DECLINED"
+        date_info = f"Requested date: {preferred_date} at {preferred_time}"
+    
+    # Email content
+    email_body = f"""
+    Dear {candidate_name},
+    
+    Your interview request has been {status_text}.
+    
+    {date_info}
+    
+    Recruiter Response:
+    {recruiter_response or 'No additional message provided.'}
+    
+    Best regards,
+    TalentMate Team
+    """
+    
+    # Here you would integrate with your email service (SendGrid, SES, etc.)
+    # For now, we'll just log the email details
+    print(f"""
+    EMAIL NOTIFICATION:
+    To: {candidate_email}
+    Subject: {subject}
+    Body: {email_body}
+    """)
+    
+    return True
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -964,16 +1390,30 @@ def submit_answer():
         answers_data[question_id] = answer
         scores_data[question_id] = score_result
         
+        # Calculate overall score
+        scores_list = [score_data['score'] for score_data in scores_data.values() if isinstance(score_data, dict) and 'score' in score_data]
+        overall_score = round(sum(scores_list) / len(scores_list)) if scores_list else None
+        
         # Save updated session data
         conn = sqlite3.connect('talentmate.db')
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE interview_sessions
-            SET questions = ?, answers = ?, scores = ?
+            SET questions = ?, answers = ?, scores = ?, overall_score = ?
             WHERE session_id = ? AND user_id = ?
-        ''', (json.dumps(questions_data), json.dumps(answers_data), json.dumps(scores_data), session_id, session['user_id']))
+        ''', (json.dumps(questions_data), json.dumps(answers_data), json.dumps(scores_data), overall_score, session_id, session['user_id']))
         conn.commit()
         conn.close()
+        
+        # Create notification if this is the final question (all questions answered)
+        if len(answers_data) == len(questions_data) and overall_score is not None:
+            create_notification(
+                session['user_id'],
+                'interview_result',
+                'Interview Results Available',
+                f'Your interview has been completed with a score of {overall_score}%. Click to view your detailed results.',
+                {'session_id': session_id, 'score': overall_score}
+            )
         
         return jsonify({
             'score': score_result['score'],
@@ -998,25 +1438,45 @@ def get_results(session_id):
         if not session_data:
             return jsonify({'error': 'Session not found'}), 404
         
-        questions_data = json.loads(session_data[0])
-        answers_data = json.loads(session_data[1])
-        scores_data = json.loads(session_data[2])
+        # Robust parsing with fallbacks
+        questions_data = json.loads(session_data[0]) if session_data[0] else []
+        answers_data = json.loads(session_data[1]) if session_data[1] else {}
+        scores_data = json.loads(session_data[2]) if session_data[2] else {}
         job_role = session_data[3]
-        resume_data = json.loads(session_data[4])
+        resume_data = json.loads(session_data[4]) if session_data[4] else {}
         
-        # Calculate overall statistics
-        scores = list(scores_data.values())
-        if scores:
-            avg_score = sum(s['score'] for s in scores) / len(scores)
-            max_score = max(s['score'] for s in scores)
-            min_score = min(s['score'] for s in scores)
+        # Handle both dict and list formats for scores_data
+        if isinstance(scores_data, dict):
+            scores = list(scores_data.values())
+        elif isinstance(scores_data, list):
+            scores = scores_data
+        else:
+            scores = []
+        
+        # Calculate overall statistics with safe numeric extraction
+        numeric_scores = []
+        for score_data in scores:
+            if isinstance(score_data, dict) and 'score' in score_data:
+                try:
+                    numeric_scores.append(float(score_data['score']))
+                except (ValueError, TypeError):
+                    pass
+            elif isinstance(score_data, (int, float)):
+                numeric_scores.append(float(score_data))
+        
+        if numeric_scores:
+            avg_score = sum(numeric_scores) / len(numeric_scores)
+            max_score = max(numeric_scores)
+            min_score = min(numeric_scores)
         else:
             avg_score = max_score = min_score = 0
         
-        # Collect all improvement areas
+        # Collect all improvement areas with isinstance check
         all_improvements = []
         for score_data in scores:
-            all_improvements.extend(score_data['areas_to_improve'])
+            if isinstance(score_data, dict) and 'areas_to_improve' in score_data:
+                if isinstance(score_data['areas_to_improve'], list):
+                    all_improvements.extend(score_data['areas_to_improve'])
         
         # Remove duplicates and get top suggestions
         unique_improvements = list(set(all_improvements))
@@ -1026,12 +1486,12 @@ def get_results(session_id):
             'overall_score': round(avg_score, 1),
             'max_score': max_score,
             'min_score': min_score,
-            'total_questions': len(questions_data),
-            'answered_questions': len(answers_data),
+            'total_questions': len(questions_data) if isinstance(questions_data, (list, dict)) else 0,
+            'answered_questions': len(answers_data) if isinstance(answers_data, (list, dict)) else 0,
             'detailed_scores': scores_data,
             'improvement_suggestions': unique_improvements[:5],  # Top 5
             'job_role': job_role,
-            'skills_identified': resume_data['skills']
+            'skills_identified': resume_data.get('skills', []) if isinstance(resume_data, dict) else []
         })
         
     except Exception as e:
@@ -1051,11 +1511,11 @@ def download_report(session_id):
         if not session_data:
             return jsonify({'error': 'Session not found'}), 404
         
-        questions_data = json.loads(session_data[0])
-        answers_data = json.loads(session_data[1])
-        scores_data = json.loads(session_data[2])
+        questions_data = json.loads(session_data[0]) if session_data[0] else []
+        answers_data = json.loads(session_data[1]) if session_data[1] else {}
+        scores_data = json.loads(session_data[2]) if session_data[2] else {}
         job_role = session_data[3]
-        resume_data = json.loads(session_data[4])
+        resume_data = json.loads(session_data[4]) if session_data[4] else {}
         
         # Create PDF in memory
         buffer = io.BytesIO()
@@ -1081,40 +1541,62 @@ def download_report(session_id):
         story.append(Spacer(1, 20))
         
         # Overall performance
-        scores = list(scores_data.values())
-        if scores:
-            avg_score = sum(s['score'] for s in scores) / len(scores)
+        # Handle both dict and list formats for scores_data
+        if isinstance(scores_data, dict):
+            scores = list(scores_data.values())
+        elif isinstance(scores_data, list):
+            scores = scores_data
+        else:
+            scores = []
+        
+        # Calculate numeric scores safely
+        numeric_scores = []
+        for score_data in scores:
+            if isinstance(score_data, dict) and 'score' in score_data:
+                try:
+                    numeric_scores.append(float(score_data['score']))
+                except (ValueError, TypeError):
+                    pass
+            elif isinstance(score_data, (int, float)):
+                numeric_scores.append(float(score_data))
+        
+        if numeric_scores:
+            avg_score = sum(numeric_scores) / len(numeric_scores)
             story.append(Paragraph("Overall Performance", styles['Heading2']))
             story.append(Paragraph(f"Average Score: {avg_score:.1f}/100", styles['Normal']))
-            story.append(Paragraph(f"Questions Answered: {len(answers_data)}/{len(questions_data)}", styles['Normal']))
+            story.append(Paragraph(f"Questions Answered: {len(answers_data) if isinstance(answers_data, (list, dict)) else 0}/{len(questions_data) if isinstance(questions_data, (list, dict)) else 0}", styles['Normal']))
             story.append(Spacer(1, 20))
         
         # Detailed question analysis
         story.append(Paragraph("Detailed Question Analysis", styles['Heading2']))
         
-        for i, question in enumerate(questions_data):
-            question_id = question['id']
-            if question_id in scores_data:
-                score_data = scores_data[question_id]
-                
-                story.append(Paragraph(f"Question {i+1}: {question['category']}", styles['Heading3']))
-                story.append(Paragraph(f"<b>Q:</b> {question['question']}", styles['Normal']))
-                story.append(Paragraph(f"<b>Score:</b> {score_data['score']}/100", styles['Normal']))
-                story.append(Paragraph(f"<b>Feedback:</b> {score_data['feedback']}", styles['Normal']))
-                
-                if score_data['areas_to_improve']:
-                    story.append(Paragraph("<b>Areas to Improve:</b>", styles['Normal']))
-                    for improvement in score_data['areas_to_improve']:
-                        story.append(Paragraph(f"• {improvement}", styles['Normal']))
-                
-                story.append(Spacer(1, 15))
+        if isinstance(questions_data, list):
+            for i, question in enumerate(questions_data):
+                if isinstance(question, dict) and 'id' in question:
+                    question_id = question['id']
+                    if isinstance(scores_data, dict) and question_id in scores_data:
+                        score_data = scores_data[question_id]
+                        
+                        if isinstance(score_data, dict):
+                            story.append(Paragraph(f"Question {i+1}: {question.get('category', 'General')}", styles['Heading3']))
+                            story.append(Paragraph(f"<b>Q:</b> {question.get('question', 'N/A')}", styles['Normal']))
+                            story.append(Paragraph(f"<b>Score:</b> {score_data.get('score', 0)}/100", styles['Normal']))
+                            story.append(Paragraph(f"<b>Feedback:</b> {score_data.get('feedback', 'No feedback available')}", styles['Normal']))
+                            
+                            if score_data.get('areas_to_improve') and isinstance(score_data['areas_to_improve'], list):
+                                story.append(Paragraph("<b>Areas to Improve:</b>", styles['Normal']))
+                                for improvement in score_data['areas_to_improve']:
+                                    story.append(Paragraph(f"• {improvement}", styles['Normal']))
+                            
+                            story.append(Spacer(1, 15))
         
         # Skills and recommendations
         story.append(Paragraph("Skills Identified", styles['Heading2']))
-        skills = resume_data['skills']
-        if skills:
+        skills = resume_data.get('skills', []) if isinstance(resume_data, dict) else []
+        if skills and isinstance(skills, list):
             for skill in skills:
-                story.append(Paragraph(f"• {skill.title()}", styles['Normal']))
+                if isinstance(skill, str):
+                    story.append(Paragraph(f"• {skill.title()}", styles['Normal']))
         else:
             story.append(Paragraph("No specific technical skills identified", styles['Normal']))
         

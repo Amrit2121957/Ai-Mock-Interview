@@ -246,6 +246,36 @@
     .badge {
         font-size: 0.75rem;
     }
+
+    .interview-request-card {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef !important;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .interview-request-card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .interview-request-card .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        border-radius: 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .interview-request-card .btn-success:hover {
+        background: #198754;
+        transform: translateY(-1px);
+    }
+
+    .interview-request-card .btn-danger:hover {
+        background: #dc3545;
+        transform: translateY(-1px);
+    }
 </style>
 {% endblock %}
 
@@ -345,7 +375,7 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-3 text-end">
-                                    <button class="btn btn-action btn-view" onclick="viewCandidateDetails('{{ request[5] }}', '{{ request[6] }}', '{{ request[7] }}', '{{ request[8] or 0 }}')">
+                                    <button class="btn btn-action btn-view" onclick="viewCandidateDetails('{{ request[5] }}', '{{ request[6] }}', '{{ request[7] }}', '{{ request[8] or 0 }}', '{{ request[1] }}')">
                                         <i class="fas fa-eye me-1"></i>View
                                     </button><br>
                                     <button class="btn btn-action btn-approve mt-1" onclick="showApprovalModal({{ request[0] }}, '{{ request[5] }}', '{{ request[3] }}', '{{ request[4] }}')">
@@ -481,7 +511,7 @@
                                             </small>
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-action btn-view" onclick="viewCandidateDetails('{{ user[1] }}', '{{ user[2] }}', '{{ user[8] or 0 }}', '{{ user[5] or 0 }}')">
+                                            <button class="btn btn-sm btn-action btn-view" onclick="viewCandidateDetails('{{ user[1] }}', '{{ user[2] }}', '{{ user[8] or 0 }}', '{{ user[5] or 0 }}', '{{ user[0] }}')">
                                                 <i class="fas fa-eye me-1"></i>View
                                             </button>
                                         </td>
@@ -615,34 +645,146 @@ function showRejectionModal(requestId, candidateName) {
     new bootstrap.Modal(document.getElementById('rejectionModal')).show();
 }
 
-function viewCandidateDetails(name, email, position, score) {
-    const details = `
-        <div class="row">
-            <div class="col-md-6">
-                <h6>Personal Information</h6>
-                <p><strong>Name:</strong> ${name}</p>
-                <p><strong>Email:</strong> ${email}</p>
-                <p><strong>Position:</strong> ${position || 'Not specified'}</p>
-            </div>
-            <div class="col-md-6">
-                <h6>Performance</h6>
-                <p><strong>Best Score:</strong> 
-                    <span class="score-badge ${
-                        score >= 80 ? 'score-excellent' :
-                        score >= 60 ? 'score-good' :
-                        score >= 40 ? 'score-average' :
-                        score > 0 ? 'score-poor' : 'score-none'
-                    }">${score}/100</span>
-                </p>
-            </div>
-        </div>
-        <div class="mt-3">
-            <h6>Notes</h6>
-            <p class="text-muted">Additional candidate information and interview history would be displayed here.</p>
-        </div>
-    `;
-    document.getElementById('candidateDetails').innerHTML = details;
-    new bootstrap.Modal(document.getElementById('candidateModal')).show();
+function viewCandidateDetails(name, email, position, score, candidateId) {
+    // Fetch interview request details for this candidate
+    fetch(`/api/candidate-interview-requests/${candidateId || email}`)
+        .then(response => response.json())
+        .then(data => {
+            let interviewSection = '';
+            
+            // Enhanced interview scheduling section
+            interviewSection = `
+                <div class="mt-4">
+                    <h6>Interview Scheduling</h6>
+                    
+                    <!-- New Interview Proposal -->
+                    <div class="interview-proposal-card p-3 mb-3 border rounded bg-light">
+                        <h6 class="mb-3"><i class="fas fa-calendar-plus me-2"></i>Propose New Interview</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Interview Date</label>
+                                <input type="date" id="proposedDate_${candidateId}" class="form-control" min="${new Date().toISOString().split('T')[0]}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Interview Time</label>
+                                <input type="time" id="proposedTime_${candidateId}" class="form-control" value="14:00">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label">Message to Candidate</label>
+                            <textarea id="proposedMessage_${candidateId}" class="form-control" rows="2" placeholder="We would like to schedule an interview with you..."></textarea>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-primary" onclick="proposeInterview('${candidateId}', '${name}', '${email}')">
+                                <i class="fas fa-paper-plane me-2"></i>Send Interview Proposal
+                            </button>
+                        </div>
+                    </div>`;
+                    
+            if (data.interview_requests && data.interview_requests.length > 0) {
+                // Show existing interview requests
+                interviewSection += `
+                    <!-- Existing Interview Requests -->
+                    <div class="existing-requests">
+                        <h6><i class="fas fa-history me-2"></i>Interview Request History</h6>
+                        ${data.interview_requests.map(req => {
+                            let statusBadge = '';
+                            let actionButtons = '';
+                            
+                            if (req.status === 'pending') {
+                                statusBadge = '<span class="badge bg-warning">Pending</span>';
+                                actionButtons = `
+                                    <button class="btn btn-success btn-sm me-2" onclick="handleInterviewAction(${req.id}, 'accept', '${name}', '${req.preferred_date}', '${req.preferred_time}')">
+                                        <i class="fas fa-check me-1"></i>Accept
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="handleInterviewAction(${req.id}, 'reject', '${name}', '${req.preferred_date}', '${req.preferred_time}')">
+                                        <i class="fas fa-times me-1"></i>Decline
+                                    </button>`;
+                            } else if (req.status === 'approved') {
+                                statusBadge = '<span class="badge bg-success">Approved</span>';
+                            } else if (req.status === 'rejected') {
+                                statusBadge = '<span class="badge bg-danger">Rejected</span>';
+                            }
+                            
+                            return `
+                                <div class="interview-request-card p-3 mb-2 border rounded">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <strong>Requested:</strong>&nbsp;${new Date(req.preferred_date).toLocaleDateString()} at ${req.preferred_time}&nbsp;
+                                                ${statusBadge}
+                                            </div>
+                                            ${req.message ? `<p class="mb-0 text-muted small">${req.message}</p>` : ''}
+                                            ${req.recruiter_response ? `<p class="mb-0 text-success small"><strong>Your message to candidate:</strong> ${req.recruiter_response}</p>` : ''}
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            ${actionButtons}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>`;
+            }
+            
+            interviewSection += `</div>`;
+            
+            const details = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Personal Information</h6>
+                        <p><strong>Name:</strong> ${name}</p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Position:</strong> ${position || 'Not specified'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Performance</h6>
+                        <p><strong>Best Score:</strong> 
+                            <span class="score-badge ${
+                                score >= 80 ? 'score-excellent' :
+                                score >= 60 ? 'score-good' :
+                                score >= 40 ? 'score-average' :
+                                score > 0 ? 'score-poor' : 'score-none'
+                            }">${score}/100</span>
+                        </p>
+                    </div>
+                </div>
+                ${interviewSection}
+            `;
+            document.getElementById('candidateDetails').innerHTML = details;
+            new bootstrap.Modal(document.getElementById('candidateModal')).show();
+        })
+        .catch(error => {
+            console.error('Error fetching candidate details:', error);
+            // Fallback to basic details without interview scheduling
+            const details = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Personal Information</h6>
+                        <p><strong>Name:</strong> ${name}</p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Position:</strong> ${position || 'Not specified'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Performance</h6>
+                        <p><strong>Best Score:</strong> 
+                            <span class="score-badge ${
+                                score >= 80 ? 'score-excellent' :
+                                score >= 60 ? 'score-good' :
+                                score >= 40 ? 'score-average' :
+                                score > 0 ? 'score-poor' : 'score-none'
+                            }">${score}/100</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h6>Interview Scheduling</h6>
+                    <p class="text-muted">Unable to load interview requests at this time.</p>
+                </div>
+            `;
+            document.getElementById('candidateDetails').innerHTML = details;
+            new bootstrap.Modal(document.getElementById('candidateModal')).show();
+        });
 }
 
 // Auto-refresh pending requests every 30 seconds
@@ -747,5 +889,110 @@ function clearAllFilters() {
     document.getElementById('filterJoined').value = '';
     filterTable();
 }
+
+function handleInterviewAction(requestId, action, candidateName, preferredDate, preferredTime) {
+    const actionText = action === 'accept' ? 'accept' : 'decline';
+    const confirmMessage = `Are you sure you want to ${actionText} the interview request from ${candidateName} for ${new Date(preferredDate).toLocaleDateString()} at ${preferredTime}?`;
+    
+    if (confirm(confirmMessage)) {
+        // Send the action to the backend
+        const formData = new FormData();
+        formData.append('action', action === 'accept' ? 'approve' : 'reject');
+        
+        if (action === 'accept') {
+            // For acceptance, use the preferred date as scheduled date
+            const scheduledDate = preferredDate + 'T' + preferredTime;
+            formData.append('scheduled_date', scheduledDate);
+            formData.append('recruiter_response', `Your interview has been scheduled for ${new Date(preferredDate).toLocaleDateString()} at ${preferredTime}. We look forward to meeting with you!`);
+        } else {
+            formData.append('recruiter_response', `Thank you for your interest. Unfortunately, we cannot accommodate your requested interview time. Please feel free to submit a new request with alternative dates.`);
+        }
+        
+        fetch(`/manage_interview_request/${requestId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                // Close the modal and refresh the page
+                bootstrap.Modal.getInstance(document.getElementById('candidateModal')).hide();
+                location.reload();
+            } else {
+                alert('Error processing request. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error processing request. Please try again.');
+        });
+    }
+}
+
+function proposeInterview(candidateId, candidateName, candidateEmail) {
+    const proposedDate = document.getElementById(`proposedDate_${candidateId}`).value;
+    const proposedTime = document.getElementById(`proposedTime_${candidateId}`).value;
+    const message = document.getElementById(`proposedMessage_${candidateId}`).value;
+    
+    if (!proposedDate || !proposedTime) {
+        alert('Please select both date and time for the interview.');
+        return;
+    }
+    
+    fetch('/api/propose-interview', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            candidate_id: candidateId,
+            candidate_email: candidateEmail,
+            proposed_date: proposedDate,
+            proposed_time: proposedTime,
+            message: message || `Hello ${candidateName}, we would like to schedule an interview with you on ${proposedDate} at ${proposedTime}.`
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Interview proposal sent successfully! The candidate will be notified.');
+            // Close modal and refresh
+            bootstrap.Modal.getInstance(document.getElementById('candidateModal')).hide();
+        } else {
+            alert('Error sending interview proposal: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error sending interview proposal. Please try again.');
+    });
+}
+
+// Global modal focus management to prevent aria-hidden warnings
+document.addEventListener('DOMContentLoaded', function() {
+    const candidateModal = document.getElementById('candidateModal');
+    if (candidateModal) {
+        // Handle focus management before modal hides
+        candidateModal.addEventListener('hide.bs.modal', function(event) {
+            // Find any focused element within the modal
+            const focusedElement = candidateModal.querySelector(':focus');
+            if (focusedElement) {
+                // Remove focus before the modal gets aria-hidden="true"
+                focusedElement.blur();
+                // Optionally, move focus to a safe element outside the modal
+                document.body.focus();
+            }
+        });
+        
+        // Additional safety: handle the 'hidden.bs.modal' event
+        candidateModal.addEventListener('hidden.bs.modal', function(event) {
+            // Ensure no elements in the modal have focus after it's hidden
+            const anyFocused = candidateModal.querySelector(':focus');
+            if (anyFocused) {
+                anyFocused.blur();
+                document.body.focus();
+            }
+        });
+    }
+});
 </script>
 {% endblock %} 

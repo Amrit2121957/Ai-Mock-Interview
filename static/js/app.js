@@ -46,12 +46,22 @@ function initializeGlobalFeatures() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+            const href = this.getAttribute('href');
+            
+            // Validate href is more than just '#' and is a valid selector
+            if (href && href.length > 1) {
+                try {
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                } catch (error) {
+                    // Invalid selector, ignore
+                    console.warn('Invalid selector for smooth scrolling:', href);
+                }
             }
         });
     });

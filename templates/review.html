@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Review - TalentMate{% endblock %}
+<!-- Cache bust: Fixed syntax error v3 - JSON formatting fix -->
 
 {% block additional_css %}
 <style>
@@ -292,23 +293,40 @@
 {% endblock %}
 
 {% block additional_js %}
+<script type="application/json" id="sessions-data">
 {% if sessions %}
-<script type="application/json" id="sessions-data">{{ sessions|tojson|safe }}</script>
+{{ sessions|tojson|safe }}
+{% else %}
+[]
 {% endif %}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Load results for each session
     const sessionsDataElement = document.getElementById('sessions-data');
     if (sessionsDataElement) {
-        const sessions = JSON.parse(sessionsDataElement.textContent);
-        sessions.forEach(function(session) {
-            loadSessionResults(session[0]);
-        });
-        
-        // Initialize performance chart if there are sessions
-        if (sessions.length > 0) {
-            initPerformanceChart();
+        try {
+            const sessionsText = sessionsDataElement.textContent.trim();
+            if (sessionsText) {
+                const sessions = JSON.parse(sessionsText);
+                if (sessions && Array.isArray(sessions) && sessions.length > 0) {
+                    sessions.forEach(function(session) {
+                        if (session && session[0]) {
+                            loadSessionResults(session[0]);
+                        }
+                    });
+                    
+                    // Initialize performance chart if there are sessions
+                    initPerformanceChart();
+                    
+                    // Check if there's a specific session to show from URL parameter
+                    checkForSessionParameter();
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing sessions data:', error);
+            console.error('Sessions content:', sessionsDataElement.textContent);
         }
     }
 });
@@ -447,22 +465,30 @@ function initPerformanceChart() {
     const sessionsDataElement = document.getElementById('sessions-data');
     if (!sessionsDataElement) return;
     
-    const sessions = JSON.parse(sessionsDataElement.textContent);
-    
-    // Create labels and collect session scores
-    const labels = [];
-    const scores = [];
-    
-    // Sort sessions by date (oldest first for chronological view)
-    sessions.sort((a, b) => new Date(a[2]) - new Date(b[2]));
-    
-    sessions.forEach((session, index) => {
-        const sessionDate = session[2] ? session[2].split('T')[0] : `Session ${index + 1}`;
-        labels.push(sessionDate);
-        scores.push(0); // Will be updated with real scores
-    });
-    
-    performanceChart = new Chart(ctx.getContext('2d'), {
+    try {
+        const sessions = JSON.parse(sessionsDataElement.textContent);
+        
+        // Check if we have sessions
+        if (!sessions || sessions.length === 0) {
+            console.log('No sessions data available for chart');
+            return;
+        }
+        
+        // Create labels and collect session scores
+        const labels = [];
+        const scores = [];
+        
+        // Sort sessions by date (oldest first for chronological view)
+        sessions.sort((a, b) => new Date(a[2]) - new Date(b[2]));
+        
+        sessions.forEach((session, index) => {
+            const sessionDate = session[2] ? session[2].split('T')[0] : `Session ${index + 1}`;
+            labels.push(sessionDate);
+            scores.push(0); // Will be updated with real scores
+        });
+        
+        // Create the chart
+        performanceChart = new Chart(ctx.getContext('2d'), {
         type: 'line',
         data: {
             labels: labels,
@@ -504,12 +530,21 @@ function initPerformanceChart() {
                         }
                     }
                 }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeInOutQuart'
             }
         }
-    });
-    
-    // Load real scores for each session
-    loadPerformanceData(sessions);
+        });
+        
+        // Load real scores for each session
+        loadPerformanceData(sessions);
+        
+    } catch (error) {
+        console.error('Error initializing performance chart:', error);
+        return;
+    }
 }
 
 async function loadPerformanceData(sessions) {
@@ -531,10 +566,10 @@ async function loadPerformanceData(sessions) {
         }
     }
     
-    // Update chart with real data
+    // Update chart with real data using smooth ease animation
     if (performanceChart) {
         performanceChart.data.datasets[0].data = scores;
-        performanceChart.update();
+        performanceChart.update('active');
     }
 }
 
@@ -549,6 +584,42 @@ async function refreshPerformanceChart() {
     
     // Reload performance data
     await loadPerformanceData(sessions);
+}
+
+// Check for session parameter in URL and auto-expand that session
+function checkForSessionParameter() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionParam = urlParams.get('session');
+    
+    if (sessionParam) {
+        // Wait a moment for all session cards to load
+        setTimeout(function() {
+            // Find the session card
+            const sessionCard = document.querySelector(`[data-session-id="${sessionParam}"]`);
+            if (sessionCard) {
+                // Scroll to the session card
+                sessionCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Add highlight effect
+                sessionCard.style.border = '2px solid #007bff';
+                sessionCard.style.boxShadow = '0 0 20px rgba(0, 123, 255, 0.3)';
+                
+                // Auto-expand the details
+                const sessionId = sessionParam;
+                viewResults(sessionId);
+                
+                // Remove highlight after 3 seconds
+                setTimeout(function() {
+                    sessionCard.style.border = '';
+                    sessionCard.style.boxShadow = '';
+                }, 3000);
+            }
+        }, 1000);
+        
+        // Clean up URL parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
 }
 
 // Format date using a simple function (since moment.js might not be available)

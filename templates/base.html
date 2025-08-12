@@ -122,6 +122,152 @@
         .navbar-nav .nav-link.dropdown-toggle:hover {
             color: rgba(255,255,255,0.9) !important;
         }
+        
+        /* Enhanced Notification Styling */
+        .notification-badge {
+            font-size: 0.65rem;
+            min-width: 20px;
+            height: 20px;
+            line-height: 20px;
+            background: linear-gradient(45deg, #ff4757, #ff3742);
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .notification-dropdown {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: none;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .notification-dropdown .dropdown-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            padding: 1rem;
+            margin: 0;
+            font-size: 1rem;
+        }
+        
+        .notification-dropdown .dropdown-divider {
+            margin: 0;
+            border-color: #e9ecef;
+        }
+        
+        .notification-item {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .notification-item:hover {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+            transform: translateX(4px);
+        }
+        
+        .notification-item.unread {
+            background: linear-gradient(135deg, #e8f4fd 0%, #d1ecf1 100%);
+            border-left: 4px solid #17a2b8;
+            box-shadow: inset 0 0 0 1px rgba(23, 162, 184, 0.1);
+        }
+        
+        .notification-item.unread::before {
+            content: '';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 8px;
+            height: 8px;
+            background: #17a2b8;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.3);
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            color: #000000;
+            font-size: 0.9rem;
+        }
+        
+        .notification-text {
+            font-size: 0.8rem;
+            color: #000000;
+            margin-bottom: 0.4rem;
+            line-height: 1.4;
+        }
+        
+        .notification-time {
+            font-size: 0.7rem;
+            color: #90a4ae;
+            font-weight: 500;
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+            float: left;
+            font-size: 1rem;
+        }
+        
+        .notification-icon.interview-result {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+        }
+        
+        .notification-icon.interview-invitation {
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            color: white;
+        }
+        
+        .notification-icon.interview-accepted {
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+            color: white;
+        }
+        
+        .notification-icon.interview-declined {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        .notification-icon.interview-alternative {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        .notification-content {
+            overflow: hidden;
+            padding-left: 55px;
+        }
+        
+        .notification-dropdown .dropdown-item-text {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .mark-all-read {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .mark-all-read:hover {
+            background: linear-gradient(135deg, #495057, #343a40);
+            color: white;
+            transform: none;
+        }
     </style>
     
     {% block additional_css %}{% endblock %}
@@ -175,6 +321,27 @@
                 
                 <ul class="navbar-nav">
                                                 {% if session.user_id %}
+                            <!-- Notification Icon (only for regular users, not recruiters) -->
+                            {% if session.user_role != 'recruiter' %}
+                            <li class="nav-item dropdown me-3">
+                                <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-bell"></i>
+                                    <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount" style="display: none;">
+                                        0
+                                    </span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown" style="width: 380px; max-height: 450px; overflow-y: auto;">
+                                    <li><h6 class="dropdown-header"><i class="fas fa-bell me-2"></i>Notifications</h6></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <div id="notificationList">
+                                        <li><span class="dropdown-item-text">No new notifications</span></li>
+                                    </div>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-center mark-all-read" href="#" onclick="markAllNotificationsRead()"><i class="fas fa-check-double me-2"></i>Mark all as read</a></li>
+                                </ul>
+                            </li>
+                            {% endif %}
+                            
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user me-1"></i>Profile
@@ -251,6 +418,29 @@
         </div>
     </footer>
 
+    <!-- Interview Invitation Modal -->
+    <div class="modal fade" id="interviewInvitationModal" tabindex="-1" aria-labelledby="interviewInvitationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="interviewInvitationModalLabel">Interview Invitation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="invitationDetails">
+                        <!-- Interview details will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="acceptInvitationBtn">Accept</button>
+                    <button type="button" class="btn btn-warning" id="proposeAlternativeBtn">Propose Alternative</button>
+                    <button type="button" class="btn btn-danger" id="declineInvitationBtn">Decline</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
@@ -272,6 +462,336 @@
                 toast.show();
             });
         });
+    </script>
+    
+    <!-- Notification JavaScript -->
+    <script>
+    // Notification System
+    let notificationPollingInterval;
+    
+    function loadNotifications() {
+        {% if session.user_id and session.user_role != 'recruiter' %}
+        fetch('/api/notifications')
+            .then(response => response.json())
+            .then(data => {
+                if (data.notifications) {
+                    updateNotificationList(data.notifications);
+                }
+            })
+            .catch(error => console.error('Error loading notifications:', error));
+        {% else %}
+        // No notifications for recruiters or unauthenticated users
+        console.log('Notifications not available for this user type');
+        {% endif %}
+    }
+    
+    function updateNotificationCount() {
+        {% if session.user_id and session.user_role != 'recruiter' %}
+        fetch('/api/notifications/count')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Notification count response:', data);
+                const badge = document.getElementById('notificationCount');
+                console.log('Badge element:', badge);
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'inline-block';
+                        console.log('Badge shown with count:', data.count);
+                    } else {
+                        badge.style.display = 'none';
+                        console.log('Badge hidden, count is 0');
+                    }
+                } else {
+                    console.error('Badge element not found');
+                }
+            })
+            .catch(error => console.error('Error loading notification count:', error));
+        {% else %}
+        // No notification count for recruiters or unauthenticated users
+        console.log('Notification count not available for this user type');
+        {% endif %}
+    }
+    
+    function updateNotificationList(notifications) {
+        const listContainer = document.getElementById('notificationList');
+        if (!listContainer) return;
+        
+        if (notifications.length === 0) {
+            listContainer.innerHTML = '<li><span class="dropdown-item-text">No new notifications</span></li>';
+            return;
+        }
+        
+        listContainer.innerHTML = notifications.map(notification => {
+            const timeAgo = formatTimeAgo(notification.created_at);
+            const unreadClass = notification.is_read ? '' : 'unread';
+            
+            // Get icon based on notification type
+            let iconClass = 'fas fa-bell';
+            switch(notification.type) {
+                case 'interview_result':
+                    iconClass = 'fas fa-chart-line';
+                    break;
+                case 'interview_invitation':
+                    iconClass = 'fas fa-calendar-alt';
+                    break;
+                case 'interview_accepted':
+                    iconClass = 'fas fa-check-circle';
+                    break;
+                case 'interview_declined':
+                    iconClass = 'fas fa-times-circle';
+                    break;
+                case 'interview_alternative':
+                    iconClass = 'fas fa-clock';
+                    break;
+            }
+            
+            return `
+                <div class="notification-item ${unreadClass}" data-notification-id="${notification.id}" data-notification-type="${notification.type}" data-notification-data='${JSON.stringify(notification.data)}' onclick="handleNotificationClickSafe(this)">"
+                    <div class="notification-icon ${notification.type}">
+                        <i class="${iconClass}"></i>
+                    </div>
+                    <div class="notification-content">
+                        <div class="notification-title">${notification.title}</div>
+                        <div class="notification-text">${notification.message}</div>
+                        <div class="notification-time">${timeAgo}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function handleNotificationClickSafe(element) {
+        const notificationId = element.getAttribute('data-notification-id');
+        const type = element.getAttribute('data-notification-type');
+        let data;
+        
+        try {
+            data = JSON.parse(element.getAttribute('data-notification-data') || '{}');
+        } catch (e) {
+            console.error('Failed to parse notification data:', e);
+            data = {};
+        }
+        
+        handleNotificationClick(notificationId, type, data);
+    }
+    
+    function handleNotificationClick(notificationId, type, data) {
+        console.log('Notification clicked:', { notificationId, type, data });
+        
+        // Ensure data is an object
+        if (typeof data === 'string') {
+            try {
+                data = JSON.parse(data);
+            } catch (e) {
+                console.error('Failed to parse notification data:', data);
+                data = {};
+            }
+        }
+        data = data || {};
+        
+        // Mark as read
+        fetch(`/api/notifications/${notificationId}/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(() => {
+            updateNotificationCount();
+            loadNotifications();
+        }).catch(error => {
+            console.error('Error marking notification as read:', error);
+        });
+        
+        // Handle different notification types
+        if (type === 'interview_result' && data.session_id) {
+            // Redirect to review page with session parameter
+            window.location.href = `/review?session=${data.session_id}`;
+        } else if (type === 'interview_invitation') {
+            // Show interview invitation modal
+            showInterviewInvitationModal(data);
+        } else if (type === 'interview_request') {
+            // Handle interview request notifications
+            window.location.href = '/profile';
+        } else if (type === 'interview_alternative') {
+            // Handle interview alternative date proposal
+            showInterviewInvitationModal(data);
+        } else if (type === 'interview_accepted') {
+            // Handle interview acceptance - redirect to profile
+            window.location.href = '/profile';
+        } else if (type === 'interview_declined') {
+            // Handle interview decline - redirect to profile
+            window.location.href = '/profile';
+        } else if (type === 'interview_scheduled') {
+            // Handle interview scheduled confirmation - redirect to profile
+            window.location.href = '/profile';
+        } else {
+            // Default action for unknown notification types
+            console.log(`Unknown notification type: ${type}`);
+        }
+    }
+    
+    function markAllNotificationsRead() {
+        fetch('/api/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(() => {
+            updateNotificationCount();
+            loadNotifications();
+        });
+    }
+    
+    function formatTimeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    }
+    
+    // Initialize notifications when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if session.user_id and session.user_role != 'recruiter' %}
+        loadNotifications();
+        updateNotificationCount();
+        
+        // Poll for new notifications every 30 seconds
+        notificationPollingInterval = setInterval(() => {
+            updateNotificationCount();
+        }, 30000);
+        {% else %}
+        // No notification initialization for recruiters or unauthenticated users
+        console.log('Notification system not initialized for this user type');
+        {% endif %}
+    });
+    
+    // Interview Invitation Modal Functions
+    function showInterviewInvitationModal(data) {
+        const details = `
+            <div class="alert alert-info">
+                <h6><i class="fas fa-calendar-alt me-2"></i>Interview Invitation</h6>
+                <p><strong>Proposed Date:</strong> ${new Date(data.proposed_date).toLocaleDateString()}</p>
+                <p><strong>Proposed Time:</strong> ${data.proposed_time}</p>
+                ${data.recruiter_message ? `<p><strong>Message:</strong> ${data.recruiter_message}</p>` : ''}
+            </div>
+            <p>Please choose how you would like to respond to this interview invitation:</p>
+        `;
+        
+        document.getElementById('invitationDetails').innerHTML = details;
+        
+        // Set up button handlers
+        document.getElementById('acceptInvitationBtn').onclick = () => respondToInvitation(data.request_id, 'accept');
+        document.getElementById('declineInvitationBtn').onclick = () => respondToInvitation(data.request_id, 'decline');
+        document.getElementById('proposeAlternativeBtn').onclick = () => showAlternativeDateForm(data.request_id);
+        
+        new bootstrap.Modal(document.getElementById('interviewInvitationModal')).show();
+    }
+    
+    function respondToInvitation(requestId, response) {
+        fetch('/api/respond-interview', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                request_id: requestId,
+                response: response
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Interview invitation ${response}ed successfully!`);
+                bootstrap.Modal.getInstance(document.getElementById('interviewInvitationModal')).hide();
+                updateNotificationCount();
+                loadNotifications();
+            } else {
+                alert('Error responding to invitation: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error responding to invitation. Please try again.');
+        });
+    }
+    
+    function showAlternativeDateForm(requestId) {
+        const alternativeForm = `
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-clock me-2"></i>Propose Alternative Date</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Alternative Date</label>
+                        <input type="date" id="alternativeDate" class="form-control" min="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Alternative Time</label>
+                        <input type="time" id="alternativeTime" class="form-control">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label">Message (Optional)</label>
+                    <textarea id="alternativeMessage" class="form-control" rows="2" placeholder="I would prefer an alternative time..."></textarea>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" onclick="submitAlternativeDate(${requestId})">
+                        <i class="fas fa-paper-plane me-2"></i>Send Alternative Proposal
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('invitationDetails').innerHTML = alternativeForm;
+    }
+    
+    function submitAlternativeDate(requestId) {
+        const alternativeDate = document.getElementById('alternativeDate').value;
+        const alternativeTime = document.getElementById('alternativeTime').value;
+        const message = document.getElementById('alternativeMessage').value;
+        
+        if (!alternativeDate || !alternativeTime) {
+            alert('Please select both date and time for the alternative.');
+            return;
+        }
+        
+        fetch('/api/respond-interview', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                request_id: requestId,
+                response: 'alternative',
+                alternative_date: alternativeDate,
+                alternative_time: alternativeTime,
+                message: message
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Alternative date proposal sent successfully!');
+                bootstrap.Modal.getInstance(document.getElementById('interviewInvitationModal')).hide();
+                updateNotificationCount();
+                loadNotifications();
+            } else {
+                alert('Error sending alternative proposal: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error sending alternative proposal. Please try again.');
+        });
+    }
     </script>
     
     {% block additional_js %}{% endblock %}
