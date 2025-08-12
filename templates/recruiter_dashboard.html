@@ -690,7 +690,10 @@ function viewCandidateDetails(name, email, position, score, candidateId) {
                         ${data.interview_requests.map(req => {
                             let statusBadge = '';
                             let actionButtons = '';
+                            let proposalInfo = '';
+                            let alternativeInfo = '';
                             
+                            // Handle different request types and statuses
                             if (req.status === 'pending') {
                                 statusBadge = '<span class="badge bg-warning">Pending</span>';
                                 actionButtons = `
@@ -704,18 +707,50 @@ function viewCandidateDetails(name, email, position, score, candidateId) {
                                 statusBadge = '<span class="badge bg-success">Approved</span>';
                             } else if (req.status === 'rejected') {
                                 statusBadge = '<span class="badge bg-danger">Rejected</span>';
+                            } else if (req.status === 'recruiter_proposed') {
+                                if (req.user_response === 'alternative_proposed') {
+                                    statusBadge = '<span class="badge bg-info">Alternative Proposed</span>';
+                                    alternativeInfo = `
+                                        <div class="alert alert-info p-2 mt-2">
+                                            <strong><i class="fas fa-clock me-1"></i>Candidate's Alternative:</strong> 
+                                            ${new Date(req.user_proposed_date).toLocaleDateString()} at ${req.user_proposed_time}
+                                            ${req.message ? `<br><small><strong>Message:</strong> ${req.message}</small>` : ''}
+                                        </div>`;
+                                    actionButtons = `
+                                        <button class="btn btn-success btn-sm me-2" onclick="acceptAlternative(${req.id}, '${req.user_proposed_date}', '${req.user_proposed_time}')">
+                                            <i class="fas fa-check me-1"></i>Accept Alternative
+                                        </button>
+                                        <button class="btn btn-secondary btn-sm" onclick="rejectAlternative(${req.id})">
+                                            <i class="fas fa-times me-1"></i>Reject
+                                        </button>`;
+                                } else {
+                                    statusBadge = '<span class="badge bg-primary">Proposed by You</span>';
+                                }
+                            }
+                            
+                            // Show recruiter's proposal if it exists
+                            if (req.recruiter_proposed_date) {
+                                proposalInfo = `
+                                    <div class="d-flex align-items-center mb-1">
+                                        <strong>Your Proposal:</strong>&nbsp;${new Date(req.recruiter_proposed_date).toLocaleDateString()} at ${req.recruiter_proposed_time}&nbsp;
+                                        ${statusBadge}
+                                    </div>`;
+                            } else if (req.preferred_date) {
+                                proposalInfo = `
+                                    <div class="d-flex align-items-center mb-1">
+                                        <strong>Requested:</strong>&nbsp;${new Date(req.preferred_date).toLocaleDateString()} at ${req.preferred_time}&nbsp;
+                                        ${statusBadge}
+                                    </div>`;
                             }
                             
                             return `
                                 <div class="interview-request-card p-3 mb-2 border rounded">
                                     <div class="row align-items-center">
                                         <div class="col-md-8">
-                                            <div class="d-flex align-items-center mb-1">
-                                                <strong>Requested:</strong>&nbsp;${new Date(req.preferred_date).toLocaleDateString()} at ${req.preferred_time}&nbsp;
-                                                ${statusBadge}
-                                            </div>
-                                            ${req.message ? `<p class="mb-0 text-muted small">${req.message}</p>` : ''}
+                                            ${proposalInfo}
+                                            ${req.message && !req.recruiter_proposed_date ? `<p class="mb-0 text-muted small">${req.message}</p>` : ''}
                                             ${req.recruiter_response ? `<p class="mb-0 text-success small"><strong>Your message to candidate:</strong> ${req.recruiter_response}</p>` : ''}
+                                            ${alternativeInfo}
                                         </div>
                                         <div class="col-md-4 text-end">
                                             ${actionButtons}
@@ -994,5 +1029,63 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Handle alternative proposal acceptance
+function acceptAlternative(requestId, alternativeDate, alternativeTime) {
+    if (confirm(`Accept the candidate's alternative date: ${new Date(alternativeDate).toLocaleDateString()} at ${alternativeTime}?`)) {
+        fetch('/api/accept-alternative', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                request_id: requestId,
+                final_date: alternativeDate,
+                final_time: alternativeTime
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Alternative date accepted! The candidate will be notified.');
+                location.reload(); // Refresh the page to show updated status
+            } else {
+                alert('Error accepting alternative: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error accepting alternative. Please try again.');
+        });
+    }
+}
+
+// Handle alternative proposal rejection
+function rejectAlternative(requestId) {
+    if (confirm('Reject the candidate\'s alternative proposal?')) {
+        fetch('/api/reject-alternative', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                request_id: requestId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Alternative proposal rejected. You may propose a new date.');
+                location.reload(); // Refresh the page to show updated status
+            } else {
+                alert('Error rejecting alternative: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error rejecting alternative. Please try again.');
+        });
+    }
+}
 </script>
 {% endblock %} 

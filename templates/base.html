@@ -321,14 +321,12 @@
                 
                 <ul class="navbar-nav">
                                                 {% if session.user_id %}
-                            <!-- Notification Icon (only for regular users, not recruiters) -->
-                            {% if session.user_role != 'recruiter' %}
+                            <!-- Notification Icon (for both users and recruiters) -->
+                            {% if session.user_id %}
                             <li class="nav-item dropdown me-3">
                                 <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-bell"></i>
-                                    <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount" style="display: none;">
-                                        0
-                                    </span>
+                                    <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount" style="display: none; width: 8px; height: 8px; padding: 0; border-radius: 50%;"></span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown" style="width: 380px; max-height: 450px; overflow-y: auto;">
                                     <li><h6 class="dropdown-header"><i class="fas fa-bell me-2"></i>Notifications</h6></li>
@@ -338,6 +336,10 @@
                                     </div>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-center mark-all-read" href="#" onclick="markAllNotificationsRead()"><i class="fas fa-check-double me-2"></i>Mark all as read</a></li>
+                                    {% if session.user_role == 'recruiter' %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-center" href="/recruiter/notifications"><i class="fas fa-list me-2"></i>View All Notifications</a></li>
+                                    {% endif %}
                                 </ul>
                             </li>
                             {% endif %}
@@ -470,7 +472,7 @@
     let notificationPollingInterval;
     
     function loadNotifications() {
-        {% if session.user_id and session.user_role != 'recruiter' %}
+        {% if session.user_id %}
         fetch('/api/notifications')
             .then(response => response.json())
             .then(data => {
@@ -480,13 +482,13 @@
             })
             .catch(error => console.error('Error loading notifications:', error));
         {% else %}
-        // No notifications for recruiters or unauthenticated users
-        console.log('Notifications not available for this user type');
+        // No notifications for unauthenticated users
+        console.log('Notifications not available for unauthenticated users');
         {% endif %}
     }
     
     function updateNotificationCount() {
-        {% if session.user_id and session.user_role != 'recruiter' %}
+        {% if session.user_id %}
         fetch('/api/notifications/count')
             .then(response => response.json())
             .then(data => {
@@ -495,9 +497,8 @@
                 console.log('Badge element:', badge);
                 if (badge) {
                     if (data.count > 0) {
-                        badge.textContent = data.count;
                         badge.style.display = 'inline-block';
-                        console.log('Badge shown with count:', data.count);
+                        console.log('Badge shown, count:', data.count);
                     } else {
                         badge.style.display = 'none';
                         console.log('Badge hidden, count is 0');
@@ -508,8 +509,8 @@
             })
             .catch(error => console.error('Error loading notification count:', error));
         {% else %}
-        // No notification count for recruiters or unauthenticated users
-        console.log('Notification count not available for this user type');
+        // No notification count for unauthenticated users
+        console.log('Notification count not available for unauthenticated users');
         {% endif %}
     }
     
@@ -615,16 +616,33 @@
             window.location.href = '/profile';
         } else if (type === 'interview_alternative') {
             // Handle interview alternative date proposal
+            {% if session.user_role == 'recruiter' %}
+            // Redirect recruiter to dashboard to handle alternative
+            window.location.href = '/recruiter/dashboard';
+            {% else %}
             showInterviewInvitationModal(data);
+            {% endif %}
         } else if (type === 'interview_accepted') {
-            // Handle interview acceptance - redirect to profile
+            // Handle interview acceptance
+            {% if session.user_role == 'recruiter' %}
+            window.location.href = '/recruiter/dashboard';
+            {% else %}
             window.location.href = '/profile';
+            {% endif %}
         } else if (type === 'interview_declined') {
-            // Handle interview decline - redirect to profile
+            // Handle interview decline
+            {% if session.user_role == 'recruiter' %}
+            window.location.href = '/recruiter/dashboard';
+            {% else %}
             window.location.href = '/profile';
+            {% endif %}
         } else if (type === 'interview_scheduled') {
-            // Handle interview scheduled confirmation - redirect to profile
+            // Handle interview scheduled confirmation
+            {% if session.user_role == 'recruiter' %}
+            window.location.href = '/recruiter/dashboard';
+            {% else %}
             window.location.href = '/profile';
+            {% endif %}
         } else {
             // Default action for unknown notification types
             console.log(`Unknown notification type: ${type}`);
@@ -660,7 +678,7 @@
     
     // Initialize notifications when page loads
     document.addEventListener('DOMContentLoaded', function() {
-        {% if session.user_id and session.user_role != 'recruiter' %}
+        {% if session.user_id %}
         loadNotifications();
         updateNotificationCount();
         
@@ -669,8 +687,8 @@
             updateNotificationCount();
         }, 30000);
         {% else %}
-        // No notification initialization for recruiters or unauthenticated users
-        console.log('Notification system not initialized for this user type');
+        // No notification initialization for unauthenticated users
+        console.log('Notification system not initialized for unauthenticated users');
         {% endif %}
     });
     

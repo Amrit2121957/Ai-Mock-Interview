@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - TalentMate{% endblock %}
+
+{% block additional_css %}
+<style>
+    .notifications-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .notification-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+
+    .notification-card.unread {
+        border-left-color: #007bff;
+        background: #f8f9ff;
+    }
+
+    .notification-card.read {
+        border-left-color: #6c757d;
+        opacity: 0.8;
+    }
+
+    .notification-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .notification-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .notification-type-badge {
+        padding: 0.25rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .notification-type-interview_alternative {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .notification-type-interview_accepted {
+        background: #e8f5e8;
+        color: #2e7d32;
+    }
+
+    .notification-type-interview_declined {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .notification-type-interview_scheduled {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .notification-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0.5rem 0;
+    }
+
+    .notification-message {
+        color: #555;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .notification-time {
+        font-size: 0.85rem;
+        color: #888;
+    }
+
+    .notification-actions {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+
+    .btn-notification {
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        margin-right: 0.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #888;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .filter-tabs {
+        margin-bottom: 2rem;
+    }
+
+    .filter-tabs .nav-link {
+        border-radius: 25px;
+        padding: 0.5rem 1.5rem;
+        margin-right: 0.5rem;
+        color: #6c757d;
+        border: 2px solid transparent;
+    }
+
+    .filter-tabs .nav-link.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notifications-container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-bell me-3"></i>Notifications</h1>
+        <a href="{{ url_for('recruiter_dashboard') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Filter Tabs -->
+    <ul class="nav filter-tabs" id="notificationTabs">
+        <li class="nav-item">
+            <a class="nav-link active" href="#" data-filter="all">All Notifications</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-filter="unread">Unread</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-filter="interview_alternative">Alternative Proposals</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-filter="interview_accepted">Accepted</a>
+        </li>
+    </ul>
+
+    <!-- Notifications List -->
+    <div id="notificationsList">
+        {% if notifications %}
+            {% for notification in notifications %}
+            <div class="notification-card {{ 'unread' if not notification.is_read else 'read' }}" 
+                 data-type="{{ notification.type }}" 
+                 data-read="{{ notification.is_read }}">
+                
+                <div class="notification-header">
+                    <span class="notification-type-badge notification-type-{{ notification.type }}">
+                        {{ notification.type.replace('_', ' ').title() }}
+                    </span>
+                    <small class="notification-time">
+                        {{ moment(notification.created_at).fromNow() if moment else notification.created_at }}
+                    </small>
+                </div>
+
+                <h5 class="notification-title">{{ notification.title }}</h5>
+                <p class="notification-message">{{ notification.message }}</p>
+
+                {% if notification.type == 'interview_alternative' and notification.data %}
+                <div class="alert alert-info">
+                    <strong><i class="fas fa-calendar-alt me-2"></i>Proposed Alternative:</strong>
+                    {{ notification.data.alternative_date }} at {{ notification.data.alternative_time }}
+                    {% if notification.data.user_message %}
+                    <br><small><strong>Message:</strong> {{ notification.data.user_message }}</small>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="notification-actions">
+                    {% if not notification.is_read %}
+                    <button class="btn btn-sm btn-outline-primary btn-notification" 
+                            onclick="markAsRead({{ notification.id }})">
+                        <i class="fas fa-check me-1"></i>Mark as Read
+                    </button>
+                    {% endif %}
+                    
+                    {% if notification.type == 'interview_alternative' and notification.data.request_id %}
+                    <button class="btn btn-sm btn-success btn-notification" 
+                            onclick="handleAlternative({{ notification.data.request_id }}, '{{ notification.data.alternative_date }}', '{{ notification.data.alternative_time }}')">
+                        <i class="fas fa-check me-1"></i>View in Dashboard
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-bell"></i>
+                <h4>No Notifications</h4>
+                <p>You'll see notifications here when candidates respond to your interview invitations.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+// Filter functionality
+document.querySelectorAll('.filter-tabs .nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Update active tab
+        document.querySelectorAll('.filter-tabs .nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        const filter = this.getAttribute('data-filter');
+        filterNotifications(filter);
+    });
+});
+
+function filterNotifications(filter) {
+    const notifications = document.querySelectorAll('.notification-card');
+    
+    notifications.forEach(notification => {
+        let show = false;
+        
+        if (filter === 'all') {
+            show = true;
+        } else if (filter === 'unread') {
+            show = notification.getAttribute('data-read') === 'False';
+        } else {
+            show = notification.getAttribute('data-type') === filter;
+        }
+        
+        notification.style.display = show ? 'block' : 'none';
+    });
+}
+
+function markAsRead(notificationId) {
+    fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function handleAlternative(requestId, date, time) {
+    // Redirect to dashboard - the alternative will be highlighted there
+    window.location.href = `/recruiter/dashboard`;
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    if (document.querySelector('.notification-card.unread')) {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %} 

@@ -744,6 +744,45 @@ def recruiter_dashboard():
     conn.close()
     return render_template('recruiter_dashboard.html', users=all_users, pending_requests=pending_requests)
 
+@app.route('/recruiter/notifications')
+@login_required
+def recruiter_notifications():
+    """Recruiter notifications view page"""
+    # Check if user is a recruiter
+    if session.get('user_role') != 'recruiter':
+        flash('Access denied. Recruiter privileges required.', 'error')
+        return redirect(url_for('home'))
+    
+    conn = sqlite3.connect('talentmate.db')
+    cursor = conn.cursor()
+    
+    # Get all notifications for the recruiter
+    cursor.execute('''
+        SELECT id, type, title, message, data, is_read, created_at
+        FROM notifications 
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    ''', (session['user_id'],))
+    
+    notifications = cursor.fetchall()
+    conn.close()
+    
+    # Format notifications for template
+    formatted_notifications = []
+    for notification in notifications:
+        notification_data = json.loads(notification[4]) if notification[4] else {}
+        formatted_notifications.append({
+            'id': notification[0],
+            'type': notification[1],
+            'title': notification[2],
+            'message': notification[3],
+            'data': notification_data,
+            'is_read': notification[5],
+            'created_at': notification[6]
+        })
+    
+    return render_template('recruiter_notifications.html', notifications=formatted_notifications)
+
 @app.route('/schedule_interview', methods=['POST'])
 @login_required
 def schedule_interview():
@@ -833,7 +872,9 @@ def get_candidate_interview_requests(candidate_identifier):
         
         cursor.execute(f'''
             SELECT ir.id, ir.user_id, ir.preferred_date, ir.preferred_time, ir.message, ir.status,
-                   ir.scheduled_date, ir.recruiter_response, u.full_name, u.email
+                   ir.scheduled_date, ir.recruiter_response, u.full_name, u.email,
+                   ir.recruiter_proposed_date, ir.recruiter_proposed_time, ir.user_response,
+                   ir.user_proposed_date, ir.user_proposed_time, ir.workflow_status
             FROM interview_requests ir
             JOIN users u ON ir.user_id = u.id
             WHERE {user_condition}
@@ -855,7 +896,13 @@ def get_candidate_interview_requests(candidate_identifier):
                 'scheduled_date': request[6],
                 'recruiter_response': request[7],
                 'candidate_name': request[8],
-                'candidate_email': request[9]
+                'candidate_email': request[9],
+                'recruiter_proposed_date': request[10],
+                'recruiter_proposed_time': request[11],
+                'user_response': request[12],
+                'user_proposed_date': request[13],
+                'user_proposed_time': request[14],
+                'workflow_status': request[15]
             })
         
         return jsonify({'interview_requests': interview_requests})
@@ -1166,6 +1213,118 @@ def respond_interview():
             return jsonify({'success': True})
         
         return jsonify({'error': 'Invalid response type'}), 400
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/accept-alternative', methods=['POST'])
+@login_required
+def accept_alternative():
+    """Recruiter accepts candidate's alternative proposal"""
+    try:
+        if session.get('user_role') != 'recruiter':
+            return jsonify({'error': 'Access denied'}), 403
+        
+        data = request.get_json()
+        request_id = data.get('request_id')
+        final_date = data.get('final_date')
+        final_time = data.get('final_time')
+        
+        if not all([request_id, final_date, final_time]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        # Update the interview request to accepted with final date/time
+        cursor.execute('''
+            UPDATE interview_requests 
+            SET status = 'approved', final_date = ?, final_time = ?, 
+                workflow_status = 'confirmed', updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND recruiter_id = ?
+        ''', (final_date, final_time, request_id, session['user_id']))
+        
+        # Get candidate info for notification
+        cursor.execute('''
+            SELECT user_id FROM interview_requests WHERE id = ?
+        ''', (request_id,))
+        
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': 'Interview request not found'}), 404
+        
+        candidate_id = result[0]
+        
+        conn.commit()
+        conn.close()
+        
+        # Create notification for the candidate
+        create_notification(
+            candidate_id,
+            'interview_scheduled',
+            'Interview Confirmed',
+            f'Your alternative interview proposal has been accepted! Interview scheduled for {final_date} at {final_time}.',
+            {
+                'request_id': request_id,
+                'final_date': final_date,
+                'final_time': final_time
+            }
+        )
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reject-alternative', methods=['POST'])
+@login_required
+def reject_alternative():
+    """Recruiter rejects candidate's alternative proposal"""
+    try:
+        if session.get('user_role') != 'recruiter':
+            return jsonify({'error': 'Access denied'}), 403
+        
+        data = request.get_json()
+        request_id = data.get('request_id')
+        
+        if not request_id:
+            return jsonify({'error': 'Missing request ID'}), 400
+        
+        conn = sqlite3.connect('talentmate.db')
+        cursor = conn.cursor()
+        
+        # Update the interview request to rejected
+        cursor.execute('''
+            UPDATE interview_requests 
+            SET status = 'rejected', workflow_status = 'rejected', 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND recruiter_id = ?
+        ''', (request_id, session['user_id']))
+        
+        # Get candidate info for notification
+        cursor.execute('''
+            SELECT user_id FROM interview_requests WHERE id = ?
+        ''', (request_id,))
+        
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': 'Interview request not found'}), 404
+        
+        candidate_id = result[0]
+        
+        conn.commit()
+        conn.close()
+        
+        # Create notification for the candidate
+        create_notification(
+            candidate_id,
+            'interview_declined',
+            'Alternative Proposal Declined',
+            'Your alternative interview proposal has been declined. The recruiter may propose a new date.',
+            {'request_id': request_id}
+        )
+        
+        return jsonify({'success': True})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

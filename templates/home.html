@@ -226,9 +226,15 @@
                     "A GOAL WITHOUT A PLAN IS JUST A WISH."
                 </div>
                 <div class="d-flex justify-content-start">
+                    {% if session.user_role == 'recruiter' %}
+                    <a href="{{ url_for('recruiter_dashboard') }}" class="btn start-btn">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    </a>
+                    {% else %}
                     <a href="{{ url_for('interview') }}" class="btn start-btn">
                         <i class="fas fa-rocket me-2"></i>Start Interview
                     </a>
+                    {% endif %}
                 </div>
             </div>
             
