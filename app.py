@@ -728,7 +728,7 @@ def recruiter_dashboard():
         LEFT JOIN interview_sessions is_session ON u.id = is_session.user_id
         WHERE u.role = 'user'
         GROUP BY u.id
-        ORDER BY best_score DESC NULLS LAST
+        ORDER BY CASE WHEN best_score IS NULL THEN 1 ELSE 0 END, best_score DESC
     ''')
     all_users = cursor.fetchall()
     
