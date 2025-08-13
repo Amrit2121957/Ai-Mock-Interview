@@ -33,5 +33,5 @@ steps:
 
 - script: |
     pip install pytest pytest-azurepipelines
-    pytest
+    pytest -q --junitxml=test-output.xml
   displayName: 'pytest'
