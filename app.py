@@ -8,11 +8,11 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import openai
-from transformers import pipeline
+# from transformers import pipeline
 import nltk
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+# from sklearn.feature_extraction.text import TfidfVectorizer
+# from sklearn.metrics.pairwise import cosine_similarity
+import random
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -144,13 +144,17 @@ def get_user_info(user_id):
     conn.close()
     return user
 
-# Initialize NLP models
-try:
-    sentiment_analyzer = pipeline("sentiment-analysis")
-    print("NLP models loaded successfully")
-except Exception as e:
-    print(f"Error loading NLP models: {e}")
-    sentiment_analyzer = None
+# Initialize NLP models (optional)
+ENABLE_SENTIMENT = os.environ.get('ENABLE_SENTIMENT', '0') in ('1', 'true', 'True')
+sentiment_analyzer = None
+if ENABLE_SENTIMENT:
+    try:
+        from transformers import pipeline
+        sentiment_analyzer = pipeline("sentiment-analysis")
+        print("NLP models loaded successfully")
+    except Exception as e:
+        print(f"Error loading NLP models: {e}")
+        sentiment_analyzer = None
 
 # Download required NLTK data
 try:
@@ -405,11 +409,10 @@ class SkillMateAI:
         
         # If we have role-specific questions, use them
         if role_category and role_category in self.question_bank['role_specific']:
-            role_questions = np.random.choice(
+            role_questions = random.sample(
                 self.question_bank['role_specific'][role_category],
-                size=min(3, len(self.question_bank['role_specific'][role_category])),
-                replace=False
-            ).tolist()
+                k=min(3, len(self.question_bank['role_specific'][role_category]))
+            )
             
             # Format role-specific questions
             for i, q in enumerate(role_questions):
@@ -421,11 +424,10 @@ class SkillMateAI:
                 })
         else:
             # Fallback to general coding questions
-            coding_questions = np.random.choice(
+            coding_questions = random.sample(
                 self.question_bank['coding'][coding_level], 
-                size=min(3, len(self.question_bank['coding'][coding_level])), 
-                replace=False
-            ).tolist()
+                k=min(3, len(self.question_bank['coding'][coding_level]))
+            )
             
             # Format coding questions
             for i, q in enumerate(coding_questions):
@@ -454,7 +456,7 @@ class SkillMateAI:
             if category in self.question_bank['scenario']:
                 questions = self.question_bank['scenario'][category]
                 selected_scenarios.extend(
-                    np.random.choice(questions, size=1, replace=False).tolist()
+                    random.sample(questions, k=1)
                 )
         
         # Format scenario questions
